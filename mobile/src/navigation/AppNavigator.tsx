@@ -194,21 +194,6 @@ export const AppNavigator: React.FC = () => {
         onOpenMenu={() => setSideMenuOpen(true)}
         onOpenProfile={() => setCurrentScreen('profile')}
         onOpenRewards={() => setCurrentScreen('rewards')}
-        onOpenReport={() => {
-          setReportOrigin('destination');
-          setReportQuickSheetVisible(true);
-        }}
-      />
-
-      {/* Screen 7: Report Incident Quick Sheet from Home */}
-      <ReportIncidentScreen
-        visible={reportQuickSheetVisible}
-        onClose={() => setReportQuickSheetVisible(false)}
-        onSelectType={(type) => {
-          setReportQuickSheetVisible(false);
-          setReportDetailsType(type);
-          setCurrentScreen('report_details');
-        }}
       />
 
       {/* Screen 12: SideMenu Drawer */}
@@ -223,10 +208,6 @@ export const AppNavigator: React.FC = () => {
           if (item === 'safety_rewards') {
             setActiveDrawerModal(null);
             setCurrentScreen('rewards');
-          } else if (item === 'report_hazard') {
-            setSideMenuOpen(false);
-            setReportOrigin('destination');
-            setReportQuickSheetVisible(true);
           } else {
             setActiveDrawerModal(item);
           }
