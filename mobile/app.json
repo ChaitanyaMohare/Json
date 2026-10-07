@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Waysure",
+    "slug": "waysure",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "WaySure uses your location to calculate safe routes, navigate, and alert you to hazards.",
+        "NSPhotoLibraryUsageDescription": "WaySure requires photo library access to attach hazard photos to reports.",
+        "NSCameraUsageDescription": "WaySure requires camera access to photograph road hazards."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "@rnmapbox/maps",
+      "expo-font"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+# IDE & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependencies & Build
+node_modules/
+dist/
+build/
+
+# Logs & Environment
+*.log
+.env
+.env*.local
+
+# OS
+.DS_Store
+Thumbs.db

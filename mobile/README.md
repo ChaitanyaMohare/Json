@@ -1,1 +1,0 @@
-Hey... Just checkking folders are generated or not.
