@@ -17,6 +17,8 @@ import {
   Search,
   Sprout
 } from '../../components/Icons';
+import NotificationPanel from '../../components/NotificationPanel';
+import { getUnreadCount } from '../../lib/api';
 
 function NavigationMenu() {
   const pathname = usePathname();
@@ -73,6 +75,24 @@ export default function AdminLayout({
   const router = useRouter();
   const [currentDateTime, setCurrentDateTime] = useState('Oct 7, 2026 08:07 PM');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread count on mount and periodically
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const count = await getUnreadCount();
+        setUnreadCount(count);
+      } catch (err) {
+        console.error('Failed to fetch unread count:', err);
+      }
+    };
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const updateTime = () => {
@@ -173,12 +193,19 @@ export default function AdminLayout({
               {currentDateTime}
             </div>
 
-            {/* Notification Bell with red badge 3 */}
-            <div className="relative p-1.5 text-slate-600 hover:text-slate-900 cursor-pointer rounded-full hover:bg-slate-100 transition-colors">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
-                3
-              </span>
+            {/* Notification Bell with red badge */}
+            <div className="relative">
+              <button
+                onClick={() => setNotificationPanelOpen(!notificationPanelOpen)}
+                className="relative p-1.5 text-slate-600 hover:text-slate-900 cursor-pointer rounded-full hover:bg-slate-100 transition-colors"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white animate-pulse">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* Admin Avatar Pill with dropdown */}
@@ -219,6 +246,13 @@ export default function AdminLayout({
             {children}
           </Suspense>
         </main>
+
+        {/* Notification Panel */}
+        <NotificationPanel 
+          isOpen={notificationPanelOpen}
+          onClose={() => setNotificationPanelOpen(false)}
+          onUnreadCountChange={(count) => setUnreadCount(count)}
+        />
       </div>
     </div>
   );

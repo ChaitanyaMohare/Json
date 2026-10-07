@@ -311,4 +311,104 @@ export async function getHotspots(
   return json.data;
 }
 
+// ============ NOTIFICATIONS ============
+
+export type NotificationType = 'NEW_REPORT' | 'INCIDENT_PROMOTED' | 'STATUS_CHANGE' | 'HIGH_SEVERITY_ALERT';
+export type NotificationPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
+export interface ReporterInfo {
+  userId?: string | null;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+}
+
+export interface ReportDetails {
+  type: IncidentType;
+  description: string;
+  location: string;
+  severity: IncidentSeverity;
+  imageUrl?: string | null;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+}
+
+export interface Notification {
+  _id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  reportId?: string | null;
+  incidentId?: string | null;
+  reporterInfo?: ReporterInfo;
+  reportDetails?: ReportDetails;
+  priority: NotificationPriority;
+  isRead: boolean;
+  readAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getNotifications(unreadOnly?: boolean, limit?: number): Promise<{
+  notifications: Notification[];
+  unreadCount: number;
+}> {
+  const params = new URLSearchParams();
+  if (unreadOnly) params.append('unreadOnly', 'true');
+  if (limit) params.append('limit', limit.toString());
+
+  const url = `${API_URL}/api/notifications${params.toString() ? `?${params.toString()}` : ''}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch notifications: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return {
+    notifications: json.data || [],
+    unreadCount: json.unreadCount || 0
+  };
+}
+
+export async function getUnreadCount(): Promise<number> {
+  const res = await fetch(`${API_URL}/api/notifications/unread-count`, { cache: 'no-store' });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch unread count: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.count || 0;
+}
+
+export async function markNotificationAsRead(id: string): Promise<Notification> {
+  const res = await fetch(`${API_URL}/api/notifications/${id}/read`, {
+    method: 'PATCH'
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to mark as read: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function markAllNotificationsAsRead(): Promise<{ modifiedCount: number }> {
+  const res = await fetch(`${API_URL}/api/notifications/read-all`, {
+    method: 'PATCH'
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to mark all as read: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return { modifiedCount: json.modifiedCount || 0 };
+}
+
+export async function deleteNotification(id: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/notifications/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to delete notification: ${res.statusText}`);
+  }
+}
+
 

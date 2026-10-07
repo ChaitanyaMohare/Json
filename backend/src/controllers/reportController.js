@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Report = require('../models/Report');
 const Incident = require('../models/Incident');
 const corroborationService = require('../services/corroborationService');
+const notificationService = require('../services/notificationService');
 
 const ALLOWED_TYPES = ['ACCIDENT', 'ROAD_BLOCK', 'ROAD_DAMAGE', 'FLOOD', 'OTHER'];
 
@@ -130,6 +131,11 @@ exports.createReport = async (req, res) => {
       imageUrl: imageUrl || null,
       incidentId: incidentId || null
     });
+
+    // Create notification for new report (async, don't wait)
+    notificationService.createReportNotification(report).catch(err => 
+      console.error('Notification creation error:', err)
+    );
 
     return res.status(201).json({
       success: true,
@@ -333,6 +339,13 @@ exports.promoteReportToIncident = async (req, res) => {
       lastCheckedAt: new Date()
     };
     await report.save();
+
+    // Create incident promotion notification (async)
+    notificationService.createIncidentPromotionNotification(
+      report, 
+      incident, 
+      'CREATED_NEW_INCIDENT'
+    ).catch(err => console.error('Notification error:', err));
 
     return res.status(201).json({
       success: true,

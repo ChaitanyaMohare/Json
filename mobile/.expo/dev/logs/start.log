@@ -1,0 +1,87 @@
+{"_e":"root:init","_t":1791409935364,"format":"v0-jsonl","version":"57.0.28"}
+{"_e":"env:mode","_t":1791409935366,"nodeEnv":"DEVELOPMENT","babelEnv":"DEVELOPMENT","mode":"development"}
+{"_e":"env:load","_t":1791409935368,"mode":"DEVELOPMENT","files":[],"env":{}}
+{"_e":"devserver:start","_t":1791409935662,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1791409935998,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1791409936225,"plugins":[]}
+{"_e":"metro:instantiate","_t":1791409939718,"atlas":false,"workers":10,"host":"::","port":8081}
+{"_e":"root:init","_t":1791410201133,"format":"v0-jsonl","version":"57.0.28"}
+{"_e":"env:mode","_t":1791410201134,"nodeEnv":"DEVELOPMENT","babelEnv":"DEVELOPMENT","mode":"development"}
+{"_e":"env:load","_t":1791410201136,"mode":"DEVELOPMENT","files":[],"env":{}}
+{"_e":"devserver:start","_t":1791410201371,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1791410201620,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1791410201787,"plugins":[]}
+{"_e":"metro:instantiate","_t":1791410205058,"atlas":false,"workers":10,"host":"::","port":8081}
+{"_e":"root:init","_t":1791410365591,"format":"v0-jsonl","version":"57.0.28"}
+{"_e":"env:mode","_t":1791410365592,"nodeEnv":"DEVELOPMENT","babelEnv":"DEVELOPMENT","mode":"development"}
+{"_e":"env:load","_t":1791410365594,"mode":"DEVELOPMENT","files":[],"env":{}}
+{"_e":"devserver:start","_t":1791410365828,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1791410366080,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1791410366251,"plugins":[]}
+{"_e":"metro:instantiate","_t":1791410369638,"atlas":false,"workers":10,"host":"::","port":8081}
+{"_e":"root:init","_t":1791410482340,"format":"v0-jsonl","version":"57.0.28"}
+{"_e":"env:mode","_t":1791410482341,"nodeEnv":"DEVELOPMENT","babelEnv":"DEVELOPMENT","mode":"development"}
+{"_e":"env:load","_t":1791410482343,"mode":"DEVELOPMENT","files":[],"env":{}}
+{"_e":"devserver:start","_t":1791410482575,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1791410482828,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1791410482987,"plugins":[]}
+{"_e":"metro:instantiate","_t":1791410486273,"atlas":false,"workers":10,"host":"::","port":8081}
+{"_e":"root:init","_t":1791410589221,"format":"v0-jsonl","version":"57.0.28"}
+{"_e":"env:mode","_t":1791410589222,"nodeEnv":"DEVELOPMENT","babelEnv":"DEVELOPMENT","mode":"development"}
+{"_e":"env:load","_t":1791410589224,"mode":"DEVELOPMENT","files":[],"env":{}}
+{"_e":"devserver:start","_t":1791410593241,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1791410593488,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1791410593633,"plugins":[]}
+{"_e":"metro:instantiate","_t":1791410597014,"atlas":false,"workers":10,"host":"::","port":8082}
+{"_e":"metro:bundling:started","_t":1791410598797,"id":"4","platform":"android","environment":null,"entry":"index.ts"}
+{"_e":"metro:bundling:progress","_t":1791410598798,"id":"4","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1791410598802,"id":"4","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1791410599310,"id":"4","progress":0.010000000000000002,"total":1,"current":1}
+{"_e":"metro:bundling:progress","_t":1791410599421,"id":"4","progress":0.1111111111111111,"total":12,"current":4}
+{"_e":"metro:bundling:progress","_t":1791410599557,"id":"4","progress":0.17361111111111113,"total":12,"current":5}
+{"_e":"metro:bundling:progress","_t":1791410600001,"id":"4","progress":0.25,"total":12,"current":6}
+{"_e":"metro:bundling:progress","_t":1791410600105,"id":"4","progress":0.25,"total":75,"current":20}
+{"_e":"metro:bundling:progress","_t":1791410600205,"id":"4","progress":0.25,"total":96,"current":44}
+{"_e":"metro:bundling:progress","_t":1791410600306,"id":"4","progress":0.25,"total":201,"current":55}
+{"_e":"metro:bundling:progress","_t":1791410600418,"id":"4","progress":0.25,"total":214,"current":62}
+{"_e":"metro:bundling:progress","_t":1791410600517,"id":"4","progress":0.25,"total":233,"current":83}
+{"_e":"metro:bundling:progress","_t":1791410600620,"id":"4","progress":0.25,"total":243,"current":99}
+{"_e":"metro:bundling:progress","_t":1791410600722,"id":"4","progress":0.25,"total":257,"current":110}
+{"_e":"metro:bundling:progress","_t":1791410600833,"id":"4","progress":0.25,"total":281,"current":124}
+{"_e":"metro:bundling:progress","_t":1791410600933,"id":"4","progress":0.25,"total":292,"current":140}
+{"_e":"metro:bundling:progress","_t":1791410601034,"id":"4","progress":0.259462890625,"total":320,"current":163}
+{"_e":"metro:bundling:progress","_t":1791410601136,"id":"4","progress":0.31878077262971843,"total":356,"current":201}
+{"_e":"metro:bundling:progress","_t":1791410601236,"id":"4","progress":0.3612609447441117,"total":381,"current":229}
+{"_e":"metro:bundling:progress","_t":1791410601336,"id":"4","progress":0.3612609447441117,"total":438,"current":261}
+{"_e":"metro:bundling:progress","_t":1791410601436,"id":"4","progress":0.37631523197514305,"total":476,"current":292}
+{"_e":"metro:bundling:progress","_t":1791410601539,"id":"4","progress":0.42533081285444235,"total":506,"current":330}
+{"_e":"metro:bundling:progress","_t":1791410601639,"id":"4","progress":0.42533081285444235,"total":554,"current":358}
+{"_e":"metro:bundling:progress","_t":1791410601740,"id":"4","progress":0.42533081285444235,"total":640,"current":398}
+{"_e":"metro:bundling:progress","_t":1791410601840,"id":"4","progress":0.42533081285444235,"total":659,"current":424}
+{"_e":"metro:bundling:progress","_t":1791410601941,"id":"4","progress":0.4411920262123648,"total":682,"current":453}
+{"_e":"metro:bundling:progress","_t":1791410602040,"id":"4","progress":0.5102040816326531,"total":693,"current":495}
+{"_e":"metro:bundling:progress","_t":1791410602145,"id":"4","progress":0.5433678749460792,"total":719,"current":530}
+{"_e":"metro:bundling:progress","_t":1791410602245,"id":"4","progress":0.6551158389548548,"total":724,"current":586}
+{"_e":"metro:bundling:progress","_t":1791410602344,"id":"4","progress":0.6948143708965056,"total":751,"current":626}
+{"_e":"metro:bundling:progress","_t":1791410602444,"id":"4","progress":0.7482363368712521,"total":763,"current":660}
+{"_e":"metro:bundling:progress","_t":1791410602545,"id":"4","progress":0.7906268002758733,"total":785,"current":698}
+{"_e":"metro:bundling:progress","_t":1791410602645,"id":"4","progress":0.7906268002758733,"total":872,"current":724}
+{"_e":"metro:bundling:progress","_t":1791410602747,"id":"4","progress":0.7906268002758733,"total":894,"current":755}
+{"_e":"metro:bundling:progress","_t":1791410602847,"id":"4","progress":0.7906268002758733,"total":916,"current":782}
+{"_e":"metro:bundling:progress","_t":1791410602947,"id":"4","progress":0.7906268002758733,"total":921,"current":809}
+{"_e":"metro:bundling:progress","_t":1791410603047,"id":"4","progress":0.83177531359944,"total":932,"current":850}
+{"_e":"metro:bundling:progress","_t":1791410603149,"id":"4","progress":0.9026009592526548,"total":941,"current":894}
+{"_e":"metro:bundling:progress","_t":1791410603249,"id":"4","progress":0.9379678341925005,"total":952,"current":922}
+{"_e":"metro:bundling:progress","_t":1791410603358,"id":"4","progress":0.9916753743961222,"total":959,"current":955}
+{"_e":"metro:bundling:progress","_t":1791410603469,"id":"4","progress":0.9958333378638897,"total":959,"current":957}
+{"_e":"metro:bundling:progress","_t":1791410603875,"id":"4","progress":0.9979155815984021,"total":959,"current":958}
+{"_e":"metro:bundling:progress","_t":1791410603980,"id":"4","progress":0.999,"total":973,"current":973}
+{"_e":"metro:bundling:done","_t":1791410604204,"id":"4","total":973,"ms":5406.4792}
+{"_e":"metro:client_log","_t":1791410910263,"level":"warn","data":["Mapbox Directions error, falling back to OSRM:","[Error: fetch failed: Fetch request has been canceled]"]}
+{"_e":"metro:client_log","_t":1791410943690,"level":"warn","data":["Mapbox Directions error, falling back to OSRM:","[Error: fetch failed: Fetch request has been canceled]"]}
+{"_e":"metro:client_log","_t":1791411045745,"level":"warn","data":["Mapbox Directions error, falling back to OSRM:","[Error: fetch failed: Fetch request has been canceled]"]}
+{"_e":"metro:server_log","_t":1791411101668,"level":"info","data":["Launching DevTools..."]}
+{"_e":"metro:client_log","_t":1791411146486,"level":"warn","data":["Mapbox Directions error, falling back to OSRM:","[Error: fetch failed: Fetch request has been canceled]"]}
+{"_e":"metro:client_log","_t":1791411172540,"level":"warn","data":["Mapbox Directions error, falling back to OSRM:","[Error: fetch failed: Fetch request has been canceled]"]}
+{"_e":"metro:client_log","_t":1791411304395,"level":"warn","data":["Mapbox Directions error, falling back to OSRM:","[Error: fetch failed: Fetch request has been canceled]"]}
+{"_e":"metro:client_log","_t":1791411325803,"level":"warn","data":["Mapbox Directions error, falling back to OSRM:","[Error: fetch failed: Fetch request has been canceled]"]}
