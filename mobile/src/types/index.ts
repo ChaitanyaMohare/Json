@@ -164,3 +164,101 @@ export interface UserProfile {
   voiceGuidance: boolean;
 }
 
+// ==========================================
+// ROUTEGUARD SAFETY COIN REWARD SYSTEM TYPES
+// ==========================================
+
+export type IncidentSeverityLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export interface ContributionScoreBreakdown {
+  orderRank: number; // 1, 2, 3, 4, 5+
+  orderPoints: number; // 50, 35, 25, 15, 10
+  hasDescription: boolean;
+  descriptionPoints: number; // +5
+  hasPhoto: boolean;
+  photoPoints: number; // +10
+  hasVideo: boolean;
+  videoPoints: number; // +15
+  evidenceTotalPoints: number; // capped at 25 max
+  gpsAccuracyMeters?: number;
+  gpsQuality: 'high' | 'medium' | 'poor';
+  gpsPoints: number; // +15 (<10m), +10 (10-30m), +0 (>30m)
+  totalScore: number; // orderPoints + evidenceTotalPoints + gpsPoints
+}
+
+export interface RiderDistributionDetail {
+  riderId: string;
+  riderName: string;
+  isCurrentUser: boolean;
+  orderRank: number;
+  orderPoints: number;
+  evidencePoints: number;
+  gpsPoints: number;
+  totalScore: number;
+  finalCoins: number;
+}
+
+export interface IncidentRewardPool {
+  id: string;
+  incidentTitle: string;
+  locationLabel: string;
+  severity: IncidentSeverityLevel;
+  totalPoolCoins: number; // LOW: 50, MED: 100, HIGH: 200, CRITICAL: 300
+  totalContributionScore: number;
+  riders: RiderDistributionDetail[];
+  status: 'pending_verification' | 'verified_distributed' | 'rejected_spam';
+  verifiedAt?: string;
+}
+
+export interface CoinTransaction {
+  id: string;
+  type: 'earned_report' | 'redeemed_voucher' | 'daily_bonus' | 'tier_bonus';
+  amount: number;
+  title: string;
+  subtitle: string;
+  timestamp: string;
+  severity?: IncidentSeverityLevel;
+  breakdown?: ContributionScoreBreakdown;
+  voucherCode?: string;
+}
+
+export interface RewardCatalogItem {
+  id: string;
+  title: string;
+  brand: string;
+  category: 'gear' | 'fuel' | 'maintenance' | 'toll' | 'voucher';
+  coinCost: number;
+  discountText: string;
+  description: string;
+  badge: string;
+  iconName: string;
+  accentColor: string;
+  stockStatus: 'In Stock' | 'Limited Stock' | 'Popular';
+  expiryDays: number;
+}
+
+export interface RedeemedVoucher {
+  id: string;
+  rewardId: string;
+  title: string;
+  brand: string;
+  discountText: string;
+  code: string;
+  redeemedAt: string;
+  expiresAt: string;
+  coinSpent: number;
+  isUsed: boolean;
+  category: string;
+}
+
+export interface UserRewardTier {
+  name: string;
+  level: number;
+  badgeIcon: string;
+  minCoins: number;
+  maxCoins: number;
+  multiplierText: string;
+  color: string;
+  perks: string[];
+}
+

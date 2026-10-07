@@ -25,12 +25,14 @@ interface DestinationScreenProps {
   onSelectDestination: (dest: DestinationItem) => void;
   onOpenMenu: () => void;
   onOpenProfile: () => void;
+  onOpenRewards?: () => void;
 }
 
 export const DestinationScreen: React.FC<DestinationScreenProps> = ({
   onSelectDestination,
   onOpenMenu,
   onOpenProfile,
+  onOpenRewards,
 }) => {
   const {
     currentLocation,
@@ -137,7 +139,11 @@ export const DestinationScreen: React.FC<DestinationScreenProps> = ({
           showsVerticalScrollIndicator={false}
         >
           {/* Header matching Screen 2 */}
-          <AppHeader onMenuPress={onOpenMenu} onProfilePress={onOpenProfile} />
+          <AppHeader
+            onMenuPress={onOpenMenu}
+            onProfilePress={onOpenProfile}
+            onRewardsPress={onOpenRewards}
+          />
 
           {/* Heading with user current location badge */}
           <View style={styles.headingSection}>

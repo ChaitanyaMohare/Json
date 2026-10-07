@@ -13,6 +13,7 @@ import { SavedPlacesScreen } from '../screens/SavedPlacesScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { EmergencyContactsScreen } from '../screens/EmergencyContactsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { RewardsScreen } from '../screens/RewardsScreen';
 import {
   OfflineMapsModal,
   SafetySettingsModal,
@@ -32,7 +33,8 @@ type ScreenFlow =
   | 'report_details'
   | 'report_submitted'
   | 'arrival'
-  | 'profile';
+  | 'profile'
+  | 'rewards';
 
 export const AppNavigator: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<ScreenFlow>('splash');
@@ -126,6 +128,7 @@ export const AppNavigator: React.FC = () => {
     return (
       <ReportSubmittedScreen
         onContinueNavigation={() => setCurrentScreen('navigation')}
+        onViewRewards={() => setCurrentScreen('rewards')}
       />
     );
   }
@@ -156,7 +159,19 @@ export const AppNavigator: React.FC = () => {
   if (currentScreen === 'profile') {
     return (
       <View style={styles.fullContainer}>
-        <ProfileScreen onBack={() => setCurrentScreen('destination')} />
+        <ProfileScreen
+          onBack={() => setCurrentScreen('destination')}
+          onOpenRewards={() => setCurrentScreen('rewards')}
+        />
+      </View>
+    );
+  }
+
+  // Screen: RouteGuard Safety Coin Rewards & Store
+  if (currentScreen === 'rewards') {
+    return (
+      <View style={styles.fullContainer}>
+        <RewardsScreen onBack={() => setCurrentScreen('destination')} />
       </View>
     );
   }
@@ -171,6 +186,7 @@ export const AppNavigator: React.FC = () => {
         }}
         onOpenMenu={() => setSideMenuOpen(true)}
         onOpenProfile={() => setCurrentScreen('profile')}
+        onOpenRewards={() => setCurrentScreen('rewards')}
       />
 
       {/* Screen 12: SideMenu Drawer */}
@@ -182,7 +198,12 @@ export const AppNavigator: React.FC = () => {
           setCurrentScreen('profile');
         }}
         onSelectMenuItem={(item) => {
-          setActiveDrawerModal(item);
+          if (item === 'safety_rewards') {
+            setActiveDrawerModal(null);
+            setCurrentScreen('rewards');
+          } else {
+            setActiveDrawerModal(item);
+          }
         }}
       />
 

@@ -25,12 +25,13 @@ import { UserProfile } from '../types';
 
 interface ProfileScreenProps {
   onBack: () => void;
+  onOpenRewards?: () => void;
 }
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
-export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
-  const { userProfile, updateUserProfile } = useApp();
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenRewards }) => {
+  const { userProfile, updateUserProfile, safetyCoins, userRewardTier } = useApp();
 
   // Local form state
   const [name, setName] = useState(userProfile.name);
@@ -279,6 +280,34 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
               </View>
             </View>
           </View>
+
+          {/* SAFETY COIN REWARD WALLET BANNER */}
+          <TouchableOpacity
+            style={styles.safetyCoinBanner}
+            onPress={onOpenRewards}
+            activeOpacity={0.85}
+          >
+            <View style={styles.safetyCoinBannerLeft}>
+              <View style={styles.coinBannerIconBox}>
+                <Text style={{ fontSize: 24 }}>🪙</Text>
+              </View>
+              <View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.safetyCoinBannerTitle}>Safety Coin Wallet</Text>
+                  <View style={styles.tierSmallBadge}>
+                    <Text style={styles.tierSmallText}>{userRewardTier.name}</Text>
+                  </View>
+                </View>
+                <Text style={styles.safetyCoinBalanceText}>
+                  {safetyCoins} Coins Available • Redeem Gear & Fuel
+                </Text>
+              </View>
+            </View>
+            <View style={styles.openRewardsPill}>
+              <Text style={styles.openRewardsPillText}>Store</Text>
+              <Feather name="chevron-right" size={16} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
 
           {/* Section 1: Personal Details */}
           <View style={styles.sectionCard}>
@@ -1074,5 +1103,67 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+  },
+  safetyCoinBanner: {
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  safetyCoinBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  coinBannerIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1E293B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  safetyCoinBannerTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  tierSmallBadge: {
+    backgroundColor: '#334155',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  tierSmallText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FCD34D',
+  },
+  safetyCoinBalanceText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  openRewardsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 2,
+  },
+  openRewardsPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

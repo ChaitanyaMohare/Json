@@ -21,6 +21,7 @@ interface SideMenuProps {
   onSelectMenuItem: (
     item:
       | 'saved_places'
+      | 'safety_rewards'
       | 'offline_maps'
       | 'safety_settings'
       | 'emergency_contacts'
@@ -36,10 +37,11 @@ export const SideMenu: React.FC<SideMenuProps> = ({
   onOpenProfile,
   onSelectMenuItem,
 }) => {
-  const { userProfile } = useApp();
+  const { userProfile, safetyCoins } = useApp();
   const menuItems: {
     key:
       | 'saved_places'
+      | 'safety_rewards'
       | 'offline_maps'
       | 'safety_settings'
       | 'emergency_contacts'
@@ -50,6 +52,12 @@ export const SideMenu: React.FC<SideMenuProps> = ({
     icon: (color: string) => React.ReactNode;
     badge?: string;
   }[] = [
+    {
+      key: 'safety_rewards',
+      label: 'Safety Coin Rewards',
+      icon: () => <Ionicons name="sparkles" size={20} color="#EAB308" />,
+      badge: `🪙 ${safetyCoins} Coins`,
+    },
     {
       key: 'saved_places',
       label: 'Saved Places',
