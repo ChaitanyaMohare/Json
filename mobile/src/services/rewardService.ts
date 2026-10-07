@@ -391,20 +391,31 @@ export const INITIAL_POOLS: IncidentRewardPool[] = [
 ];
 
 export class RewardService {
+  public static readonly MAX_REPORTERS_ELIGIBLE_FOR_POINTS = 5;
+
   /**
    * 1. Get Reporting Order Points
    * 1st valid report = 50 pts
    * 2nd valid report = 35 pts
    * 3rd valid report = 25 pts
    * 4th valid report = 15 pts
-   * 5th+ valid report = 10 pts
+   * 5th valid report = 10 pts
+   * 6th+ duplicate report = 0 pts (Anti-farming protection: Only the first 5 valid reporters receive points!)
    */
   static getOrderPoints(orderRank: number): number {
     if (orderRank <= 1) return 50;
     if (orderRank === 2) return 35;
     if (orderRank === 3) return 25;
     if (orderRank === 4) return 15;
-    return 10;
+    if (orderRank === 5) return 10;
+    return 0; // 0 points for 6th reporter onwards to prevent duplicate reward farming
+  }
+
+  /**
+   * Check whether a reporter rank is eligible to receive safety reward points
+   */
+  static isReporterEligibleForPoints(orderRank: number): boolean {
+    return orderRank >= 1 && orderRank <= this.MAX_REPORTERS_ELIGIBLE_FOR_POINTS;
   }
 
   /**
@@ -463,6 +474,7 @@ export class RewardService {
   /**
    * Full Contribution Score Calculation:
    * Contribution Score = Reporting Order Points + Evidence Quality Points + Location Accuracy Points
+   * Enforces Anti-Farming Rule: Only the first 5 reporters receive order reward points.
    */
   static calculateContributionScore(params: {
     orderRank?: number;
@@ -472,6 +484,7 @@ export class RewardService {
     gpsAccuracyMeters?: number;
   }): ContributionScoreBreakdown {
     const orderRank = Math.max(1, params.orderRank || 1);
+    const isFarmingCapped = orderRank > this.MAX_REPORTERS_ELIGIBLE_FOR_POINTS;
     const orderPoints = this.getOrderPoints(orderRank);
 
     const hasDescription = Boolean(params.hasDescription);
@@ -486,12 +499,16 @@ export class RewardService {
 
     const gps = this.getGpsPoints(params.gpsAccuracyMeters);
 
-    const totalScore =
-      orderPoints + evidence.totalEvidencePoints + gps.gpsPoints;
+    // If capped by anti-farming protection, total score is 0 so no coins can be farmed
+    const totalScore = isFarmingCapped
+      ? 0
+      : orderPoints + evidence.totalEvidencePoints + gps.gpsPoints;
 
     return {
       orderRank,
       orderPoints,
+      isFarmingCapped,
+      maxReportersEligible: this.MAX_REPORTERS_ELIGIBLE_FOR_POINTS,
       hasDescription,
       descriptionPoints: evidence.descriptionPoints,
       hasPhoto,

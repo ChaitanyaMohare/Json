@@ -71,6 +71,10 @@ export interface AppContextType {
   setNavigationMuted: (muted: boolean) => void;
   currentSpeed: number;
 
+  // Safety & Power Safety Mode
+  powerSafetyMode: boolean;
+  setPowerSafetyMode: (enabled: boolean) => void;
+
   // Modals & Sheets
   incidentAlertVisible: boolean;
   setIncidentAlertVisible: (visible: boolean) => void;
@@ -201,6 +205,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<boolean>(false);
   const [selectedIncidentType, setSelectedIncidentType] =
     useState<IncidentType>('accident');
+
+  const [powerSafetyMode, setPowerSafetyMode] = useState<boolean>(true);
 
   // Map layers
   const [mapLayers, setMapLayers] = useState<MapLayersState>(defaultLayers);
@@ -450,12 +456,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       geoTag: geoTag || undefined,
     };
 
-    const updated = await ReportService.saveReport(newReport);
-    setSubmittedReports(updated);
+    // Determine reporter rank (1st to 5th earn reward points; 6th+ are capped by anti-farming protection)
+    const existingSimilarReports = submittedReports.filter(
+      (r) =>
+        r.incidentType === incidentType &&
+        Math.abs(r.latitude - targetLat) < 0.003 &&
+        Math.abs(r.longitude - targetLng) < 0.003
+    );
+    const orderRank = existingSimilarReports.length + 1;
 
     // Create a corresponding Incident Reward Pool entry
     const breakdown = RewardService.calculateContributionScore({
-      orderRank: 1,
+      orderRank,
       hasDescription: Boolean(description && description.trim().length > 0),
       hasPhoto: Boolean(photoUri),
       hasVideo: false,
@@ -469,13 +481,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         ? 'MEDIUM'
         : 'LOW';
 
+    const isEligible = orderRank <= RewardService.MAX_REPORTERS_ELIGIBLE_FOR_POINTS;
+    const coinsEarned = isEligible
+      ? orderRank === 1
+        ? 75
+        : orderRank === 2
+        ? 55
+        : orderRank === 3
+        ? 40
+        : orderRank === 4
+        ? 30
+        : 20
+      : 0;
+
     const distributed = RewardService.distributePoolCoins(poolSeverity, [
       {
         riderId: 'rider-self',
-        riderName: 'You (1st Reporter)',
+        riderName: `You (${orderRank === 1 ? '1st' : orderRank === 2 ? '2nd' : orderRank === 3 ? '3rd' : orderRank === 4 ? '4th' : orderRank === 5 ? '5th' : `${orderRank}th`} Reporter)`,
         isCurrentUser: true,
         score: breakdown.totalScore,
-        orderRank: 1,
+        orderRank,
         orderPoints: breakdown.orderPoints,
         evidencePoints: breakdown.evidenceTotalPoints,
         gpsPoints: breakdown.gpsPoints,
@@ -495,11 +520,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     const nextPools = [newPool, ...rewardPools];
+
+    // Immediately update user's safety reward account with earned points
+    let nextBalance = safetyCoins;
+    let nextLifetime = lifetimeCoins;
+    let nextTxs = coinTransactions;
+
+    if (isEligible && coinsEarned > 0) {
+      nextBalance = safetyCoins + coinsEarned;
+      nextLifetime = lifetimeCoins + coinsEarned;
+      const newTx: CoinTransaction = {
+        id: `tx-${Date.now()}`,
+        type: 'earned_report',
+        amount: coinsEarned,
+        title: `${title} Verified`,
+        subtitle: `Rank #${orderRank} Reporter (+${coinsEarned} Safety Coins credited)`,
+        timestamp: 'Just now',
+        severity: poolSeverity,
+        breakdown,
+      };
+      nextTxs = [newTx, ...coinTransactions];
+      setSafetyCoins(nextBalance);
+      setLifetimeCoins(nextLifetime);
+      setCoinTransactions(nextTxs);
+    }
+
     setRewardPools(nextPools);
     saveRewardsToStorage(
-      safetyCoins,
-      lifetimeCoins,
-      coinTransactions,
+      nextBalance,
+      nextLifetime,
+      nextTxs,
       nextPools,
       redeemedVouchers
     );
@@ -746,6 +796,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         navigationMuted,
         setNavigationMuted,
         currentSpeed,
+        powerSafetyMode,
+        setPowerSafetyMode,
         incidentAlertVisible,
         setIncidentAlertVisible,
         alternativeRouteVisible,

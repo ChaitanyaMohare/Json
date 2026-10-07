@@ -59,6 +59,8 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
     setIncidentAlertVisible,
     userProfile,
     submitNewReport,
+    powerSafetyMode,
+    setPowerSafetyMode,
   } = useApp();
 
   const [layersSheetVisible, setLayersSheetVisible] = useState(false);
@@ -277,6 +279,7 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
           name: selectedDestination?.name,
         }}
         destinationLabel={selectedDestination?.name}
+        corridorServices={corridorServices}
         isNavigating={true}
         isDriving={isDriving}
         simulationSpeed={simSpeed}
@@ -299,7 +302,35 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
           turnDirection={telemetry.turnType}
           onMicPress={handleVoiceInstruction}
         />
+
+        {/* POWER SAFETY MODE STATUS PILL */}
+        {powerSafetyMode && (
+          <TouchableOpacity
+            style={styles.powerSafetyPill}
+            activeOpacity={0.85}
+            onPress={handleTriggerSafeCheckIn}
+          >
+            <Ionicons name="shield-checkmark" size={13} color="#2563EB" />
+            <Text style={styles.powerSafetyPillText}>🛡️ Power Safety Active</Text>
+            <View style={styles.powerSafetyDot} />
+          </TouchableOpacity>
+        )}
       </SafeAreaView>
+
+      {/* PERSISTENT HAZARD REPORT BUTTON (ALWAYS VISIBLE DURING ACTIVE NAVIGATION) */}
+      <TouchableOpacity
+        style={styles.persistentReportBtn}
+        activeOpacity={0.9}
+        onPress={onOpenReport}
+      >
+        <View style={styles.persistentReportIconCircle}>
+          <Ionicons name="warning" size={18} color="#FFFFFF" />
+        </View>
+        <View>
+          <Text style={styles.persistentReportText}>Report Hazard</Text>
+          <Text style={styles.persistentReportSub}>Accident • Pothole • Block</Text>
+        </View>
+      </TouchableOpacity>
 
       {/* IN-NAVIGATION UPCOMING SERVICE PROXIMITY BANNER */}
       {activeServiceProximity && (
@@ -1357,5 +1388,73 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  powerSafetyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 18,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    borderWidth: 1.5,
+    borderColor: '#93C5FD',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  powerSafetyPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1D4ED8',
+  },
+  powerSafetyDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  persistentReportBtn: {
+    position: 'absolute',
+    bottom: 210,
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EA580C',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 24,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 999,
+    borderWidth: 1.5,
+    borderColor: '#FDBA74',
+  },
+  persistentReportIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  persistentReportText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  persistentReportSub: {
+    color: '#FFEDD5',
+    fontSize: 10,
+    fontWeight: '600',
   },
 });

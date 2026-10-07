@@ -1,7 +1,13 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { Coordinates, Incident, NearbyService, MapLayersState } from '../types';
+import {
+  Coordinates,
+  Incident,
+  NearbyService,
+  MapLayersState,
+  RouteCorridorService,
+} from '../types';
 import { VehicleIconType } from '../data/mockData';
 import { MAPBOX_ACCESS_TOKEN } from '../config/mapbox';
 import { BUNDLED_LEAFLET_CSS, BUNDLED_LEAFLET_JS } from '../assets/leafletBundle';
@@ -25,6 +31,7 @@ interface InteractiveMapProps {
   alternativeRouteCoordinates?: [number, number][];
   incidents?: Incident[];
   services?: NearbyService[];
+  corridorServices?: RouteCorridorService[];
   layers?: MapLayersState;
   showIncidentHotspot?: boolean;
   destinationLabel?: string;
@@ -49,6 +56,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   alternativeRouteCoordinates = [],
   incidents = [],
   services = [],
+  corridorServices = [],
   layers = {
     incidents: true,
     hospitals: true,
@@ -405,6 +413,54 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       background: radial-gradient(ellipse at center, rgba(239, 68, 68, 0.9) 0%, rgba(239, 68, 68, 0.2) 60%, rgba(239, 68, 68, 0) 100%);
       border-radius: 50%;
     }
+
+    /* Corridor Route-Based Services Marker & Popups */
+    .corridor-service-marker {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2.5px solid #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    .leaflet-popup-content-wrapper {
+      border-radius: 14px;
+      padding: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+    }
+    .srv-popup {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 4px 6px;
+      min-width: 170px;
+    }
+    .srv-popup-cat {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 800;
+      color: #FFFFFF;
+      padding: 2px 6px;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .srv-popup-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #0F172A;
+      margin-bottom: 2px;
+      line-height: 15px;
+    }
+    .srv-popup-sub {
+      font-size: 10px;
+      color: #475569;
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
@@ -648,6 +704,40 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           if (mainRoutePoly) mainRoutePoly.setLatLngs(routePoints);
         }
       }
+    }
+
+    // 4b. Route-Based Corridor Services (Petrol pumps, CNG stations, Garages, Hospitals, Police along route)
+    var corridorServicesData = ${JSON.stringify(corridorServices || [])};
+    if (corridorServicesData && corridorServicesData.length > 0) {
+      corridorServicesData.forEach(function(s) {
+        if (!s.coordinates || !s.coordinates.latitude || !s.coordinates.longitude) return;
+        var emoji = s.category === 'petrol' ? '⛽' :
+                    s.category === 'cng' ? '⚡' :
+                    s.category === 'diesel' ? '🛢️' :
+                    s.category === 'garage' ? '🔧' :
+                    s.category === 'hospital' ? '🏥' :
+                    s.category === 'police' ? '🚓' : '📍';
+        var bg = s.color || '#2563EB';
+        var iconHtml = '<div class="corridor-service-marker" style="background:' + bg + ';">' + emoji + '</div>';
+        var srvIcon = L.divIcon({
+          className: '',
+          html: iconHtml,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        });
+        var marker = L.marker([s.coordinates.latitude, s.coordinates.longitude], {
+          icon: srvIcon,
+          zIndexOffset: 1100
+        }).addTo(map);
+
+        var popupHtml = '<div class="srv-popup">' +
+          '<div class="srv-popup-cat" style="background:' + bg + ';">' + s.category + '</div>' +
+          '<div class="srv-popup-title">' + s.name + '</div>' +
+          '<div class="srv-popup-sub">📍 ' + s.distanceFromRouteMeters + 'm off route • ' + s.operatingHours + '</div>' +
+          (s.fuelTypes && s.fuelTypes.length ? '<div class="srv-popup-sub" style="margin-top:4px;color:#2563EB;font-weight:700;">' + s.fuelTypes.join(' • ') + '</div>' : '') +
+        '</div>';
+        marker.bindPopup(popupHtml, { offset: [0, -10] });
+      });
     }
 
     // 5. Total Route Distance & Geometry Helpers

@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 
 // 1. Offline Maps Modal
 export const OfflineMapsModal: React.FC<{
@@ -103,6 +104,7 @@ export const SafetySettingsModal: React.FC<{
   visible: boolean;
   onClose: () => void;
 }> = ({ visible, onClose }) => {
+  const { powerSafetyMode, setPowerSafetyMode } = useApp();
   const [hazardAlerts, setHazardAlerts] = useState(true);
   const [slowdownDetection, setSlowdownDetection] = useState(true);
   const [rerouteSafety, setRerouteSafety] = useState(true);
@@ -120,6 +122,26 @@ export const SafetySettingsModal: React.FC<{
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
+          {/* Dedicated Power Safety Mode */}
+          <View style={[styles.settingRow, { backgroundColor: '#F0FDF4', padding: 14, borderRadius: 16, borderColor: '#BBF7D0', borderWidth: 1.5, marginBottom: 14 }]}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                <Text style={[styles.settingLabel, { color: '#166534', fontWeight: '800' }]}>Power Safety Mode</Text>
+                <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                  <Text style={{ color: '#15803D', fontSize: 10, fontWeight: '800' }}>RECOMMENDED</Text>
+                </View>
+              </View>
+              <Text style={[styles.settingDesc, { color: '#14532D' }]}>
+                Intended for long journeys and risky corridors. Prompts a gentle safe check-in if stationary before any emergency escalation.
+              </Text>
+            </View>
+            <Switch
+              value={powerSafetyMode}
+              onValueChange={setPowerSafetyMode}
+              trackColor={{ false: '#CBD5E1', true: '#16A34A' }}
+            />
+          </View>
+
           <View style={styles.settingRow}>
             <View style={{ flex: 1, marginRight: 12 }}>
               <Text style={styles.settingLabel}>Proactive Hazard Alerts</Text>

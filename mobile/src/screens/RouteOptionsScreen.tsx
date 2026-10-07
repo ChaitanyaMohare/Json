@@ -47,6 +47,8 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
     selectedRoute,
     setSelectedRoute,
     recalculateRoutes,
+    powerSafetyMode,
+    setPowerSafetyMode,
   } = useApp();
 
   const activeDest = destination || selectedDestination;
@@ -179,7 +181,7 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
           />
         </View>
 
-        {/* Live Interactive Route Preview Map */}
+        {/* Live Interactive Route Preview Map with Corridor Services */}
         <View style={styles.mapPreviewContainer}>
           <MapboxMap
             selectedRoute={selectedRoute}
@@ -190,6 +192,7 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
               name: activeDest.name,
             }}
             destinationLabel={activeDest.name}
+            corridorServices={corridorServices}
             isNavigating={false}
           />
           {/* Floating Duration / Distance Status Pill */}
@@ -375,30 +378,33 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
           </View>
         </View>
 
-        {/* FEATURE 3: LONG-ROUTE SAFETY MONITORING TOGGLE */}
+        {/* POWER SAFETY MODE (FOR LONG JOURNEYS & RISKY AREAS) */}
         <View style={styles.longRouteToggleCard}>
-          <View style={styles.longRouteIconCircle}>
-            <Ionicons name="shield-checkmark" size={22} color="#2563EB" />
+          <View style={[styles.longRouteIconCircle, powerSafetyMode && { backgroundColor: '#EFF6FF' }]}>
+            <Ionicons name="shield-checkmark" size={22} color={powerSafetyMode ? '#2563EB' : '#94A3B8'} />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.longRouteTitle}>Long-Route Safety Mode</Text>
-              <View style={styles.safetyActiveBadge}>
-                <Text style={styles.safetyActiveText}>Safe Watch</Text>
+              <Text style={styles.longRouteTitle}>Power Safety Mode</Text>
+              <View style={[styles.safetyActiveBadge, powerSafetyMode && { backgroundColor: '#DCFCE7' }]}>
+                <Text style={[styles.safetyActiveText, powerSafetyMode && { color: '#15803D' }]}>
+                  {powerSafetyMode ? 'Active Protection' : 'Disabled'}
+                </Text>
               </View>
             </View>
             <Text style={styles.longRouteDesc}>
-              Automatic safe check-in if stationary for &gt;45 min, emergency contact alerts & safe escalation.
+              Dedicated safety mode for long journeys or risky areas. If stopped unusually long, triggers a safety check-in before any emergency escalation.
             </Text>
           </View>
           <TouchableOpacity
-            style={[styles.toggleCheckbox, longRouteSafetyEnabled && styles.toggleCheckboxActive]}
-            onPress={() => setLongRouteSafetyEnabled(!longRouteSafetyEnabled)}
+            style={[styles.toggleCheckbox, powerSafetyMode && styles.toggleCheckboxActive]}
+            onPress={() => setPowerSafetyMode(!powerSafetyMode)}
+            activeOpacity={0.8}
           >
             <Ionicons
-              name={longRouteSafetyEnabled ? 'checkmark' : 'close'}
+              name={powerSafetyMode ? 'checkmark' : 'close'}
               size={16}
-              color={longRouteSafetyEnabled ? '#FFFFFF' : '#94A3B8'}
+              color={powerSafetyMode ? '#FFFFFF' : '#94A3B8'}
             />
           </TouchableOpacity>
         </View>

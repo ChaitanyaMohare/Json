@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { useApp } from '../context/AppContext';
 
 interface ReportSubmittedScreenProps {
   onContinueNavigation: () => void;
@@ -20,6 +21,22 @@ export const ReportSubmittedScreen: React.FC<ReportSubmittedScreenProps> = ({
   onContinueNavigation,
   onViewRewards,
 }) => {
+  const { safetyCoins, submittedReports } = useApp();
+  const latestReport = submittedReports[0];
+  const orderRank = latestReport ? Math.min(5, (latestReport.supportingReports || 1)) : 1;
+  const isCapped = orderRank > 5;
+  const coinsAwarded = isCapped
+    ? 0
+    : orderRank === 1
+    ? 75
+    : orderRank === 2
+    ? 55
+    : orderRank === 3
+    ? 40
+    : orderRank === 4
+    ? 30
+    : 20;
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -32,7 +49,7 @@ export const ReportSubmittedScreen: React.FC<ReportSubmittedScreenProps> = ({
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>Report Submitted</Text>
+        <Text style={styles.title}>Hazard Report Submitted</Text>
 
         {/* Geo-Tag Verification Indicator */}
         <View style={styles.geoTagVerifiedPill}>
@@ -47,18 +64,28 @@ export const ReportSubmittedScreen: React.FC<ReportSubmittedScreenProps> = ({
               <Text style={styles.rewardCoinEmoji}>🪙</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.rewardCardTitle}>Safety Coin Pool Reward</Text>
-              <Text style={styles.rewardCardSubtitle}>Proportional Pool Distribution</Text>
+              <Text style={styles.rewardCardTitle}>
+                {isCapped ? 'Report Logged (Points Capped)' : `+${coinsAwarded} Safety Coins Credited`}
+              </Text>
+              <Text style={styles.rewardCardSubtitle}>
+                {isCapped
+                  ? 'Hazard corroborated'
+                  : `Rank #${orderRank} Reporter • Added to your Waysure Account`}
+              </Text>
             </View>
-            <View style={styles.rewardScoreBadge}>
-              <Text style={styles.rewardScoreText}>75 Score</Text>
+            <View style={[styles.rewardScoreBadge, isCapped && { backgroundColor: '#F1F5F9', borderColor: '#CBD5E1' }]}>
+              <Text style={[styles.rewardScoreText, isCapped && { color: '#64748B' }]}>
+                {isCapped ? 'Capped' : `Rank #${orderRank}`}
+              </Text>
             </View>
           </View>
 
           {/* Breakdown Chips */}
           <View style={styles.breakdownRow}>
             <View style={styles.breakdownChip}>
-              <Text style={styles.breakdownChipLabel}>1st Alert: <Text style={{ fontWeight: '800' }}>+50p</Text></Text>
+              <Text style={styles.breakdownChipLabel}>
+                Rank #{orderRank}: <Text style={{ fontWeight: '800' }}>{isCapped ? '0p' : `+${coinsAwarded - 25}p`}</Text>
+              </Text>
             </View>
             <View style={styles.breakdownChip}>
               <Text style={styles.breakdownChipLabel}>Photo Evid: <Text style={{ fontWeight: '800' }}>+10p</Text></Text>
@@ -69,14 +96,22 @@ export const ReportSubmittedScreen: React.FC<ReportSubmittedScreenProps> = ({
           </View>
 
           <View style={styles.estimatedPayoutRow}>
-            <Text style={styles.estimatedPayoutText}>Estimated Reward:</Text>
-            <Text style={styles.estimatedCoinsValue}>+50 to +200 Coins</Text>
+            <Text style={styles.estimatedPayoutText}>Total Wallet Balance:</Text>
+            <Text style={styles.estimatedCoinsValue}>🪙 {safetyCoins} Coins</Text>
+          </View>
+
+          {/* Anti-Farming Protection Notice */}
+          <View style={styles.antiFarmingNotice}>
+            <Ionicons name="shield-outline" size={13} color="#64748B" />
+            <Text style={styles.antiFarmingNoticeText}>
+              Anti-Farming Rule: Only the first 5 valid reporters earn points per hazard event.
+            </Text>
           </View>
         </View>
 
-        {/* 3 Line Message */}
+        {/* Message */}
         <Text style={styles.message}>
-          Thank you! Your verified report will be credited with Safety Coins once community and AI validation completes.
+          Thank you for protecting fellow riders on Waysure!
         </Text>
       </View>
 
@@ -247,6 +282,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     color: '#059669',
+  },
+  antiFarmingNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  antiFarmingNoticeText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+    flex: 1,
   },
   bottomBar: {
     paddingHorizontal: 20,

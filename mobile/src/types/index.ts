@@ -171,8 +171,10 @@ export interface UserProfile {
 export type IncidentSeverityLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export interface ContributionScoreBreakdown {
-  orderRank: number; // 1, 2, 3, 4, 5+
-  orderPoints: number; // 50, 35, 25, 15, 10
+  orderRank: number; // 1, 2, 3, 4, 5 (Rank > 5 gets 0 order points to prevent duplicate farming)
+  orderPoints: number; // 50 (1st), 35 (2nd), 25 (3rd), 15 (4th), 10 (5th), 0 (6th+)
+  isFarmingCapped?: boolean; // True if submitted after the first 5 valid reporters
+  maxReportersEligible?: number; // 5
   hasDescription: boolean;
   descriptionPoints: number; // +5
   hasPhoto: boolean;

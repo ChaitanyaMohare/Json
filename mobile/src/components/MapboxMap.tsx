@@ -1,6 +1,12 @@
 import React from 'react';
 import { View, StyleSheet, Text, Dimensions } from 'react-native';
-import { Incident, NearbyService, RouteOption, MapLayersState } from '../types';
+import {
+  Incident,
+  NearbyService,
+  RouteOption,
+  MapLayersState,
+  RouteCorridorService,
+} from '../types';
 import { InteractiveMap, NavigationProgressData } from './InteractiveMap';
 import { VehicleIconType } from '../data/mockData';
 
@@ -14,6 +20,7 @@ interface MapboxMapProps {
   alternativeRouteType?: 'safer' | 'current' | 'alternate';
   incidents?: Incident[];
   services?: NearbyService[];
+  corridorServices?: RouteCorridorService[];
   layers?: MapLayersState;
   showIncidentHotspot?: boolean;
   onSelectIncident?: (inc: Incident) => void;
@@ -39,6 +46,7 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
   showAlternativeRoutes = false,
   incidents = [],
   services = [],
+  corridorServices = [],
   layers = {
     incidents: true,
     hospitals: true,
@@ -76,6 +84,7 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
         routeCoordinates={routeCoords}
         incidents={incidents}
         services={services}
+        corridorServices={corridorServices}
         layers={layers}
         showIncidentHotspot={showIncidentHotspot}
         destinationLabel={activeDestLabel}
