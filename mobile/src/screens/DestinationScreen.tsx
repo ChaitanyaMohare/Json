@@ -26,6 +26,7 @@ interface DestinationScreenProps {
   onOpenMenu: () => void;
   onOpenProfile: () => void;
   onOpenRewards?: () => void;
+  onOpenReport?: () => void;
 }
 
 export const DestinationScreen: React.FC<DestinationScreenProps> = ({
@@ -33,6 +34,7 @@ export const DestinationScreen: React.FC<DestinationScreenProps> = ({
   onOpenMenu,
   onOpenProfile,
   onOpenRewards,
+  onOpenReport,
 }) => {
   const {
     currentLocation,
@@ -243,6 +245,36 @@ export const DestinationScreen: React.FC<DestinationScreenProps> = ({
             </View>
           ) : (
             <>
+              {/* Report Road Hazard Instant Action Card */}
+              <TouchableOpacity
+                style={styles.hazardBanner}
+                activeOpacity={0.85}
+                onPress={onOpenReport}
+              >
+                <View style={styles.hazardBannerIconWrap}>
+                  <Ionicons name="warning" size={24} color="#D97706" />
+                </View>
+                <View style={styles.hazardBannerContent}>
+                  <View style={styles.hazardBannerHeader}>
+                    <Text style={styles.hazardBannerTitle}>Report Road Hazard</Text>
+                    <View style={styles.hazardRewardPill}>
+                      <Ionicons name="sparkles" size={11} color="#B45309" />
+                      <Text style={styles.hazardRewardText}>+50 Coins</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.hazardBannerSubtitle}>
+                    Potholes, accidents, road blockages & flood spots
+                  </Text>
+                  <View style={styles.hazardTagsRow}>
+                    <View style={styles.hazardTag}><Text style={styles.hazardTagText}>⚠️ Accident</Text></View>
+                    <View style={styles.hazardTag}><Text style={styles.hazardTagText}>🕳️ Pothole</Text></View>
+                    <View style={styles.hazardTag}><Text style={styles.hazardTagText}>🚧 Blockage</Text></View>
+                    <View style={styles.hazardTag}><Text style={styles.hazardTagText}>🌊 Flooding</Text></View>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={20} color="#D97706" />
+              </TouchableOpacity>
+
               {/* Quick Destination Cards */}
               <View style={styles.quickCardsRow}>
                 {quickItems.map((item) => (
@@ -276,6 +308,20 @@ export const DestinationScreen: React.FC<DestinationScreenProps> = ({
             </>
           )}
         </ScrollView>
+
+        {/* Floating Quick Hazard Report Button */}
+        {onOpenReport && (
+          <TouchableOpacity
+            style={styles.floatingReportBtn}
+            activeOpacity={0.9}
+            onPress={onOpenReport}
+          >
+            <View style={styles.floatingReportIconWrap}>
+              <Ionicons name="warning" size={18} color="#FFFFFF" />
+            </View>
+            <Text style={styles.floatingReportText}>Report Hazard</Text>
+          </TouchableOpacity>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -446,5 +492,116 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1D4ED8',
     marginBottom: 2,
+  },
+  hazardBanner: {
+    marginHorizontal: 20,
+    marginBottom: 22,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FDE68A',
+    shadowColor: '#D97706',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  hazardBannerIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  hazardBannerContent: {
+    flex: 1,
+  },
+  hazardBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  hazardBannerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  hazardRewardPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  hazardRewardText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  hazardBannerSubtitle: {
+    fontSize: 12,
+    color: '#78350F',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  hazardTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  hazardTag: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  hazardTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  floatingReportBtn: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    backgroundColor: '#EA580C',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+    gap: 8,
+    zIndex: 99,
+  },
+  floatingReportIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  floatingReportText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 14,
+    letterSpacing: -0.2,
   },
 });

@@ -22,6 +22,7 @@ interface SideMenuProps {
     item:
       | 'saved_places'
       | 'safety_rewards'
+      | 'report_hazard'
       | 'offline_maps'
       | 'safety_settings'
       | 'emergency_contacts'
@@ -42,6 +43,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
     key:
       | 'saved_places'
       | 'safety_rewards'
+      | 'report_hazard'
       | 'offline_maps'
       | 'safety_settings'
       | 'emergency_contacts'
@@ -57,6 +59,12 @@ export const SideMenu: React.FC<SideMenuProps> = ({
       label: 'Safety Coin Rewards',
       icon: () => <Ionicons name="sparkles" size={20} color="#EAB308" />,
       badge: `🪙 ${safetyCoins} Coins`,
+    },
+    {
+      key: 'report_hazard',
+      label: 'Report Road Hazard',
+      icon: () => <Ionicons name="warning-outline" size={20} color="#EA580C" />,
+      badge: '+50 Coins',
     },
     {
       key: 'saved_places',

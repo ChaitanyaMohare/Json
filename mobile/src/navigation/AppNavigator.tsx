@@ -38,6 +38,7 @@ type ScreenFlow =
 
 export const AppNavigator: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<ScreenFlow>('splash');
+  const [reportOrigin, setReportOrigin] = useState<'destination' | 'navigation' | 'arrival'>('destination');
   const [reportDetailsType, setReportDetailsType] =
     useState<IncidentType>('accident');
 
@@ -83,7 +84,10 @@ export const AppNavigator: React.FC = () => {
         <NavigationScreen
           route={selectedRoute}
           onEndNavigation={() => setCurrentScreen('destination')}
-          onOpenReport={() => setReportQuickSheetVisible(true)}
+          onOpenReport={() => {
+            setReportOrigin('navigation');
+            setReportQuickSheetVisible(true);
+          }}
           onOpenAlternativeRoute={() => setCurrentScreen('alternative_route')}
           onArrived={() => setCurrentScreen('arrival')}
         />
@@ -117,7 +121,7 @@ export const AppNavigator: React.FC = () => {
     return (
       <ReportDetailsScreen
         incidentType={reportDetailsType}
-        onBack={() => setCurrentScreen('navigation')}
+        onBack={() => setCurrentScreen(reportOrigin)}
         onSubmitSuccess={() => setCurrentScreen('report_submitted')}
       />
     );
@@ -127,7 +131,7 @@ export const AppNavigator: React.FC = () => {
   if (currentScreen === 'report_submitted') {
     return (
       <ReportSubmittedScreen
-        onContinueNavigation={() => setCurrentScreen('navigation')}
+        onContinueNavigation={() => setCurrentScreen(reportOrigin)}
         onViewRewards={() => setCurrentScreen('rewards')}
       />
     );
@@ -139,7 +143,10 @@ export const AppNavigator: React.FC = () => {
       <View style={styles.fullContainer}>
         <ArrivalScreen
           onDone={() => setCurrentScreen('destination')}
-          onReportIssueNearby={() => setReportQuickSheetVisible(true)}
+          onReportIssueNearby={() => {
+            setReportOrigin('arrival');
+            setReportQuickSheetVisible(true);
+          }}
         />
 
         <ReportIncidentScreen
@@ -187,6 +194,21 @@ export const AppNavigator: React.FC = () => {
         onOpenMenu={() => setSideMenuOpen(true)}
         onOpenProfile={() => setCurrentScreen('profile')}
         onOpenRewards={() => setCurrentScreen('rewards')}
+        onOpenReport={() => {
+          setReportOrigin('destination');
+          setReportQuickSheetVisible(true);
+        }}
+      />
+
+      {/* Screen 7: Report Incident Quick Sheet from Home */}
+      <ReportIncidentScreen
+        visible={reportQuickSheetVisible}
+        onClose={() => setReportQuickSheetVisible(false)}
+        onSelectType={(type) => {
+          setReportQuickSheetVisible(false);
+          setReportDetailsType(type);
+          setCurrentScreen('report_details');
+        }}
       />
 
       {/* Screen 12: SideMenu Drawer */}
@@ -201,6 +223,10 @@ export const AppNavigator: React.FC = () => {
           if (item === 'safety_rewards') {
             setActiveDrawerModal(null);
             setCurrentScreen('rewards');
+          } else if (item === 'report_hazard') {
+            setSideMenuOpen(false);
+            setReportOrigin('destination');
+            setReportQuickSheetVisible(true);
           } else {
             setActiveDrawerModal(item);
           }
