@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  ScrollView,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,10 +19,16 @@ import { NavigationStatusSheet } from '../components/NavigationStatusSheet';
 import { IncidentAlertSheet } from '../components/IncidentAlertSheet';
 import { BottomSheet } from '../components/BottomSheet';
 import { MapLayerSheet } from '../components/MapLayerSheet';
-import { RouteOption } from '../types';
+import {
+  RouteOption,
+  SpeedDropEvent,
+  RouteCorridorService,
+  CorridorServiceCategory,
+} from '../types';
 import { useApp } from '../context/AppContext';
 import { VehicleIconType } from '../data/mockData';
 import { NavigationProgressData } from '../components/InteractiveMap';
+import { SafetyMonitoringService } from '../services/safetyMonitoringService';
 
 interface NavigationScreenProps {
   route: RouteOption;
@@ -49,21 +57,37 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
     toggleMapLayer,
     incidentAlertVisible,
     setIncidentAlertVisible,
+    userProfile,
+    submitNewReport,
   } = useApp();
 
   const [layersSheetVisible, setLayersSheetVisible] = useState(false);
   const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
-  // Default to walk mode if walking travel mode was selected
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleIconType>(
     travelMode === 'walk' ? 'walk' : 'car'
   );
-  // Real-time GPS navigation is active by default (auto simulation is OFF)
+
+  // Real-time GPS navigation state
   const [isDriving, setIsDriving] = useState<boolean>(false);
   const [simSpeed, setSimSpeed] = useState<number>(2);
   const [recenterCount, setRecenterCount] = useState<number>(0);
   const [restartCount, setRestartCount] = useState<number>(0);
 
-  // Live Navigation Telemetry from Map Engine (0 km/h initial real-time speed)
+  // FEATURE 1: SPEED-DROP ALERT STATE
+  const [speedDropEvent, setSpeedDropEvent] = useState<SpeedDropEvent | null>(null);
+
+  // FEATURE 2: IN-NAVIGATION ROUTE SERVICES DRAWER & PROXIMITY ALERT
+  const [servicesDrawerVisible, setServicesDrawerVisible] = useState(false);
+  const [serviceCategory, setServiceCategory] = useState<CorridorServiceCategory | 'all'>('all');
+  const [activeServiceProximity, setActiveServiceProximity] =
+    useState<RouteCorridorService | null>(null);
+
+  // FEATURE 3: LONG-ROUTE SAFETY MONITORING & INACTIVITY CHECK-IN
+  const [safeCheckInVisible, setSafeCheckInVisible] = useState(false);
+  const [safeCheckInStep, setSafeCheckInStep] = useState<'prompt' | 'escalation'>('prompt');
+  const [countdownSeconds, setCountdownSeconds] = useState(60);
+
+  // Live Navigation Telemetry
   const [telemetry, setTelemetry] = useState<NavigationProgressData>({
     coveredKm: 0,
     remainingKm: parseFloat(route.distance.replace(/[^\d.]/g, '')) || 12,
@@ -77,8 +101,124 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
         : `Continue towards ${selectedDestination.name}`,
   });
 
+  // Fetch Corridor Services along route
+  const corridorServices = SafetyMonitoringService.getRouteCorridorServices(
+    currentLocation,
+    selectedDestination.coordinates || currentLocation,
+    serviceCategory
+  );
+
+  // Monitor Speed-Drop on telemetry or GPS updates
   const handleProgressUpdate = (data: NavigationProgressData) => {
     setTelemetry(data);
+
+    // Run speed-drop detection algorithm
+    const liveSpeed = isDriving ? data.speedKmh : currentSpeed || 0;
+    const drop = SafetyMonitoringService.processSpeedReading(
+      liveSpeed,
+      currentLocation
+    );
+    if (drop && !speedDropEvent) {
+      setSpeedDropEvent(drop);
+    }
+
+    // Check proximity to upcoming services along route
+    if (data.coveredKm > 1 && !activeServiceProximity && corridorServices.length > 0) {
+      const nearest = corridorServices[0];
+      setActiveServiceProximity(nearest);
+    }
+  };
+
+  // Safe Check-In Countdown Timer
+  useEffect(() => {
+    let timer: any = null;
+    if (safeCheckInVisible && safeCheckInStep === 'prompt' && countdownSeconds > 0) {
+      timer = setTimeout(() => {
+        setCountdownSeconds((s) => s - 1);
+      }, 1000);
+    } else if (safeCheckInVisible && safeCheckInStep === 'prompt' && countdownSeconds === 0) {
+      // Countdown expired: advance to emergency escalation step
+      setSafeCheckInStep('escalation');
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [safeCheckInVisible, safeCheckInStep, countdownSeconds]);
+
+  // Handle Speed-Drop User Responses
+  const handleSpeedDropResponse = async (
+    type: 'traffic' | 'blockage' | 'accident' | 'normal_stop'
+  ) => {
+    if (type === 'normal_stop') {
+      setSpeedDropEvent(null);
+      Alert.alert(
+        'Normal Stop Noted',
+        'Have a safe break! Your stop is not recorded as any hazard or accident.'
+      );
+      return;
+    }
+
+    // Submit corresponding incident report
+    const incidentType =
+      type === 'traffic'
+        ? 'heavy_traffic'
+        : type === 'blockage'
+        ? 'road_blockage'
+        : 'accident';
+
+    const desc =
+      type === 'traffic'
+        ? 'Sudden deceleration caused by heavy traffic buildup.'
+        : type === 'blockage'
+        ? 'Vehicle stopped due to road construction / obstruction.'
+        : 'Hazard or emergency stop on active route.';
+
+    await submitNewReport(
+      incidentType,
+      desc,
+      null,
+      selectedDestination.name,
+      currentLocation,
+      {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        timestamp: new Date().toISOString(),
+        addressLabel: selectedDestination.name,
+        accuracyMeters: 6,
+      }
+    );
+
+    setSpeedDropEvent(null);
+    Alert.alert(
+      'Hazard Signal Registered',
+      'Thank you! Your verified signal helps warn oncoming riders and credits Safety Coins to your wallet upon verification.'
+    );
+  };
+
+  const handleSimulateSpeedDrop = () => {
+    setSpeedDropEvent({
+      id: `sim-drop-${Date.now()}`,
+      previousSpeedKmh: 54,
+      currentSpeedKmh: 8,
+      deltaKmh: 46,
+      timestamp: Date.now(),
+      coordinates: currentLocation,
+      status: 'detected',
+    });
+  };
+
+  const handleTriggerSafeCheckIn = () => {
+    setCountdownSeconds(60);
+    setSafeCheckInStep('prompt');
+    setSafeCheckInVisible(true);
+  };
+
+  const handleCallEmergencyContact = () => {
+    const phone = userProfile?.emergencyContactPhone || '112';
+    Linking.openURL(`tel:${phone}`).catch(() => {
+      Alert.alert('Emergency Dispatch', `Calling ${phone}...`);
+    });
   };
 
   const handleEndNavigationPrompt = () => {
@@ -107,15 +247,6 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
     );
   };
 
-  const handleToggleDriving = () => {
-    setIsDriving((prev) => !prev);
-  };
-
-  const handleRestartRoute = () => {
-    setRestartCount((c) => c + 1);
-    setIsDriving(true);
-  };
-
   const vehicleOptions: {
     type: VehicleIconType;
     label: string;
@@ -134,18 +265,18 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* 60fps Google Maps Navigation Engine with Real Road Polyline & Butter-Smooth Motion */}
+      {/* 60fps Navigation Engine */}
       <MapboxMap
         currentLocation={currentLocation}
         currentHeading={currentHeading}
         currentSpeed={currentSpeed}
-        destination={selectedDestination.coordinates}
         selectedRoute={route}
-        incidents={[]}
-        services={[]}
-        layers={mapLayers}
-        showIncidentHotspot={false}
-        destinationLabel={selectedDestination.name}
+        destination={{
+          latitude: selectedDestination?.coordinates?.latitude,
+          longitude: selectedDestination?.coordinates?.longitude,
+          name: selectedDestination?.name,
+        }}
+        destinationLabel={selectedDestination?.name}
         isNavigating={true}
         isDriving={isDriving}
         simulationSpeed={simSpeed}
@@ -156,76 +287,105 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
         onArrived={onArrived}
       />
 
-      {/* Top Turn Instruction Card (Dynamic Distance & Directions) */}
-      <SafeAreaView style={styles.topSafeArea}>
-        <View style={styles.topHeaderWrapper}>
-          <NavigationInstructionCard
-            distance={
-              telemetry.nextTurnMeters < 60
-                ? (selectedVehicle === 'walk' ? 'Walk ahead' : 'Turn ahead')
-                : telemetry.nextTurnMeters >= 1000
-                ? `${(telemetry.nextTurnMeters / 1000).toFixed(1)} km`
-                : `${telemetry.nextTurnMeters} m`
-            }
-            instruction={telemetry.turnInstruction}
-            turnDirection={telemetry.turnType}
-            onMicPress={handleVoiceInstruction}
-          />
-
-          {/* Navigation Mode Indicator Pill (Active Status, Real GPS vs Demo Simulation) */}
-          <View style={styles.navModeBar}>
-            <View style={[styles.navModeDot, isDriving ? styles.simDot : styles.liveGpsDot]} />
-            <Text style={styles.navModeText}>
-              {isDriving
-                ? `${selectedVehicle === 'walk' ? '🚶 Demo Walk' : '🚘 Demo Simulation'} (${simSpeed}x)`
-                : (selectedVehicle === 'walk' ? '🚶 Real GPS Walk' : '🛰️ Real-Time GPS')}
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleToggleDriving}
-              style={[styles.switchModeBtn, isDriving && styles.switchModeBtnActive]}
-            >
-              <Text style={styles.switchModeBtnText}>
-                {isDriving ? 'Live GPS' : 'Simulate'}
-              </Text>
-            </TouchableOpacity>
-            {isDriving && (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={handleRestartRoute}
-                style={styles.switchModeBtn}
-              >
-                <Text style={styles.switchModeBtnText}>Restart</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
+      {/* Top Turn-by-Turn Instruction Card */}
+      <SafeAreaView style={styles.topOverlay} edges={['top']}>
+        <NavigationInstructionCard
+          instruction={telemetry.turnInstruction}
+          distance={
+            telemetry.nextTurnMeters > 1000
+              ? `${(telemetry.nextTurnMeters / 1000).toFixed(1)} km`
+              : `${telemetry.nextTurnMeters} m`
+          }
+          turnDirection={telemetry.turnType}
+          onMicPress={handleVoiceInstruction}
+        />
       </SafeAreaView>
 
-      {/* Right Floating Control Column: Vehicle Picker, Recenter, Play/Pause, Speed, Layers, Mute, Hazard */}
-      <View style={styles.rightControlsCol}>
-        {/* Change Vehicle Icon Button (shows 🚶 if walk mode) */}
+      {/* IN-NAVIGATION UPCOMING SERVICE PROXIMITY BANNER */}
+      {activeServiceProximity && (
+        <View style={styles.serviceProximityBanner}>
+          <View style={[styles.serviceProximityIcon, { backgroundColor: `${activeServiceProximity.color}20` }]}>
+            <Ionicons name={activeServiceProximity.iconName as any} size={20} color={activeServiceProximity.color} />
+          </View>
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={styles.serviceProximityTitle}>
+              {activeServiceProximity.name}
+            </Text>
+            <Text style={styles.serviceProximitySub}>
+              📍 800m ahead along route ({activeServiceProximity.operatingHours})
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.serviceProximityViewBtn}
+            onPress={() => setServicesDrawerVisible(true)}
+          >
+            <Text style={styles.serviceProximityViewBtnText}>View</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setActiveServiceProximity(null)}
+            style={{ padding: 4 }}
+          >
+            <Feather name="x" size={16} color="#94A3B8" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Right Floating Quick Action Bar */}
+      <View style={styles.rightBar}>
+        {/* Recenter / Compass Button */}
         <TouchableOpacity
+          style={styles.actionBtn}
+          activeOpacity={0.8}
+          onPress={() => setRecenterCount((c) => c + 1)}
+        >
+          <MaterialCommunityIcons name="crosshairs-gps" size={22} color="#1E293B" />
+        </TouchableOpacity>
+
+        {/* View Route Corridor Services Button */}
+        <TouchableOpacity
+          style={styles.actionBtn}
+          activeOpacity={0.8}
+          onPress={() => setServicesDrawerVisible(true)}
+        >
+          <Ionicons name="compass-outline" size={22} color="#2563EB" />
+        </TouchableOpacity>
+
+        {/* Long-Route Safe Check-in Test Button */}
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: '#EFF6FF', borderColor: '#93C5FD' }]}
+          activeOpacity={0.8}
+          onPress={handleTriggerSafeCheckIn}
+        >
+          <Ionicons name="shield-checkmark" size={20} color="#2563EB" />
+        </TouchableOpacity>
+
+        {/* Speed-Drop Test Trigger */}
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}
+          activeOpacity={0.8}
+          onPress={handleSimulateSpeedDrop}
+        >
+          <Ionicons name="speedometer-outline" size={20} color="#B45309" />
+        </TouchableOpacity>
+
+        {/* Vehicle Avatar Picker */}
+        <TouchableOpacity
+          style={styles.actionBtn}
           activeOpacity={0.8}
           onPress={() => setVehicleModalVisible(true)}
-          style={[
-            styles.floatingRoundBtn,
-            styles.vehicleBtn,
-            selectedVehicle === 'walk' && styles.walkVehicleBtn,
-          ]}
         >
           {selectedVehicle === 'walk' ? (
-            <Text style={styles.walkIconText}>🚶</Text>
+            <Text style={{ fontSize: 18 }}>🚶</Text>
           ) : (
             <MaterialCommunityIcons
               name={
-                selectedVehicle === 'bike'
-                  ? 'motorbike'
+                selectedVehicle === 'car'
+                  ? 'car-side'
                   : selectedVehicle === 'suv'
                   ? 'car-estate'
-                  : selectedVehicle === 'arrow'
-                  ? 'navigation'
-                  : 'car-side'
+                  : selectedVehicle === 'bike'
+                  ? 'motorbike'
+                  : 'navigation'
               }
               size={22}
               color="#2563EB"
@@ -233,73 +393,17 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
           )}
         </TouchableOpacity>
 
-        {/* Recenter on Vehicle */}
+        {/* Map Layers */}
         <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => setRecenterCount((c) => c + 1)}
-          style={styles.floatingRoundBtn}
-        >
-          <Feather name="crosshair" size={18} color="#2563EB" />
-        </TouchableOpacity>
-
-        {/* Play / Pause Forward Progression or Demo Simulation */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handleToggleDriving}
-          style={[
-            styles.floatingRoundBtn,
-            isDriving ? styles.drivingActiveBtn : styles.gpsLiveBtn,
-          ]}
-        >
-          <Feather
-            name={isDriving ? 'pause' : 'play'}
-            size={18}
-            color={isDriving ? '#F59E0B' : '#2563EB'}
-          />
-        </TouchableOpacity>
-
-        {/* Speed Pill Toggle (1x, 2x, 4x) */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => setSimSpeed((prev) => (prev === 1 ? 2 : prev === 2 ? 4 : 1))}
-          style={[styles.floatingRoundBtn, styles.speedPillBtn]}
-        >
-          <Text style={styles.speedPillText}>{simSpeed}x</Text>
-        </TouchableOpacity>
-
-        {/* Map Layers toggle */}
-        <TouchableOpacity
+          style={styles.actionBtn}
           activeOpacity={0.8}
           onPress={() => setLayersSheetVisible(true)}
-          style={styles.floatingRoundBtn}
         >
-          <Feather name="layers" size={18} color={colors.textPrimary} />
-        </TouchableOpacity>
-
-        {/* Mute audio button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => setNavigationMuted(!navigationMuted)}
-          style={styles.floatingRoundBtn}
-        >
-          <Feather
-            name={navigationMuted ? 'volume-x' : 'volume-2'}
-            size={18}
-            color={colors.textPrimary}
-          />
-        </TouchableOpacity>
-
-        {/* Hazard report button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={onOpenReport}
-          style={[styles.floatingRoundBtn, styles.hazardRoundBtn]}
-        >
-          <Feather name="alert-triangle" size={18} color={colors.incidentRed} />
+          <Ionicons name="layers-outline" size={22} color="#1E293B" />
         </TouchableOpacity>
       </View>
 
-      {/* Bottom Left Real-Time Speedometer & Advisory Speed Limit HUD */}
+      {/* Speedometer HUD */}
       {(() => {
         const advisorySpeedLimit =
           selectedVehicle === 'walk' ? 6 : selectedVehicle === 'bike' ? 35 : 60;
@@ -327,7 +431,6 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
               <Text style={styles.speedUnit}>km/h</Text>
             </View>
 
-            {/* Advisory Speed Limit Road Sign */}
             {selectedVehicle !== 'walk' && (
               <View style={styles.speedLimitSign}>
                 <Text style={styles.speedLimitSignNumber}>{advisorySpeedLimit}</Text>
@@ -338,7 +441,7 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
         );
       })()}
 
-      {/* Bottom Floating Navigation Status Sheet with Covered Distance & Live Progress */}
+      {/* Bottom Floating Navigation Status Sheet */}
       <View style={styles.bottomSheetWrapper}>
         <NavigationStatusSheet
           duration={route.duration || 'Calculating...'}
@@ -352,7 +455,269 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
         />
       </View>
 
-      {/* Vehicle Icon Picker Modal */}
+      {/* ============================================================ */}
+      {/* FEATURE 1 MODAL: SPEED-DROP ALERT (SIGNAL-BASED INQUIRY)      */}
+      {/* ============================================================ */}
+      <Modal
+        visible={Boolean(speedDropEvent)}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSpeedDropEvent(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.speedDropCard}>
+            <View style={styles.speedDropHeader}>
+              <View style={styles.speedDropIconBox}>
+                <Ionicons name="speedometer" size={26} color="#DC2626" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.speedDropTitle}>Sudden Slowdown Detected</Text>
+                <Text style={styles.speedDropSub}>
+                  Speed dropped from {speedDropEvent?.previousSpeedKmh} km/h to {speedDropEvent?.currentSpeedKmh} km/h
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.speedDropQuestion}>
+              Are you encountering traffic, road blockage, or another hazard ahead?
+            </Text>
+
+            {/* Quick-Response Options */}
+            <View style={styles.speedDropOptions}>
+              <TouchableOpacity
+                style={styles.speedDropOptionBtn}
+                onPress={() => handleSpeedDropResponse('traffic')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.speedDropOptionEmoji}>🚦</Text>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.speedDropOptionTitle}>Heavy Traffic / Sudden Jam</Text>
+                  <Text style={styles.speedDropOptionSub}>Alerts oncoming riders behind you</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.speedDropOptionBtn}
+                onPress={() => handleSpeedDropResponse('blockage')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.speedDropOptionEmoji}>🚧</Text>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.speedDropOptionTitle}>Road Blockage / Work</Text>
+                  <Text style={styles.speedDropOptionSub}>Logs lane obstruction notice</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.speedDropOptionBtn}
+                onPress={() => handleSpeedDropResponse('accident')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.speedDropOptionEmoji}>⚠️</Text>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.speedDropOptionTitle}>Hazard / Accident Ahead</Text>
+                  <Text style={styles.speedDropOptionSub}>Emergency safety alert</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.speedDropOptionBtn, { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0' }]}
+                onPress={() => handleSpeedDropResponse('normal_stop')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.speedDropOptionEmoji}>☕</Text>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.speedDropOptionTitle}>Normal Stop (Signal / Break)</Text>
+                  <Text style={styles.speedDropOptionSub}>Dismiss without false alarm</Text>
+                </View>
+                <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.speedDropPolicyNote}>
+              💡 A speed drop is treated as a telemetry signal, never automatically as an accident.
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ============================================================ */}
+      {/* FEATURE 2 MODAL: ROUTE CORRIDOR SERVICES DRAWER              */}
+      {/* ============================================================ */}
+      <Modal
+        visible={servicesDrawerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setServicesDrawerVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.servicesDrawerCard}>
+            <View style={styles.drawerHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="compass" size={22} color="#2563EB" />
+                <Text style={styles.drawerTitle}>Services Along Route</Text>
+              </View>
+              <TouchableOpacity onPress={() => setServicesDrawerVisible(false)}>
+                <Feather name="x" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Filter Pills */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.drawerFilterScroll}>
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'petrol', label: '⛽ Petrol' },
+                { key: 'cng', label: '⚡ CNG/Diesel' },
+                { key: 'garage', label: '🔧 Garages' },
+                { key: 'hospital', label: '🏥 Hospitals' },
+                { key: 'police', label: '👮 Police' },
+              ].map((cat) => (
+                <TouchableOpacity
+                  key={cat.key}
+                  style={[
+                    styles.drawerFilterPill,
+                    serviceCategory === cat.key && styles.drawerFilterPillActive,
+                  ]}
+                  onPress={() => setServiceCategory(cat.key as any)}
+                >
+                  <Text
+                    style={[
+                      styles.drawerFilterText,
+                      serviceCategory === cat.key && styles.drawerFilterTextActive,
+                    ]}
+                  >
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+              {corridorServices.map((service) => (
+                <View key={service.id} style={styles.drawerServiceCard}>
+                  <View style={[styles.drawerServiceIconBox, { backgroundColor: `${service.color}15` }]}>
+                    <Ionicons name={service.iconName as any} size={22} color={service.color} />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.drawerServiceName}>{service.name}</Text>
+                    <Text style={styles.drawerServiceDist}>
+                      📍 {service.distanceFromStartKm} km from start • {service.distanceFromRouteMeters}m off highway
+                    </Text>
+                    <Text style={styles.drawerServiceHours}>🕒 {service.operatingHours}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.drawerCallBtn}
+                    onPress={() => {
+                      if (service.phone) {
+                        Linking.openURL(`tel:${service.phone}`);
+                      } else {
+                        Alert.alert(service.name, service.address);
+                      }
+                    }}
+                  >
+                    <Feather name="phone" size={16} color="#2563EB" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ============================================================ */}
+      {/* FEATURE 3 MODAL: LONG-ROUTE SAFETY INACTIVITY CHECK-IN       */}
+      {/* ============================================================ */}
+      <Modal
+        visible={safeCheckInVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSafeCheckInVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.checkInCard}>
+            {safeCheckInStep === 'prompt' ? (
+              <>
+                <View style={styles.checkInCountdownCircle}>
+                  <Text style={styles.checkInCountdownNumber}>{countdownSeconds}</Text>
+                  <Text style={styles.checkInCountdownSec}>sec</Text>
+                </View>
+
+                <Text style={styles.checkInTitle}>Are you okay?</Text>
+                <Text style={styles.checkInSub}>
+                  We noticed your vehicle has been stationary for an unusually long period on this route.
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.imOkButton}
+                  onPress={() => setSafeCheckInVisible(false)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                  <Text style={styles.imOkButtonText}>I'm OK & Safe</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.needHelpButton}
+                  onPress={() => setSafeCheckInStep('escalation')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="alert-circle" size={18} color="#DC2626" />
+                  <Text style={styles.needHelpButtonText}>I Need Assistance</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.checkInPolicyText}>
+                  {SafetyMonitoringService.getSafetyEscalationPolicyText()}
+                </Text>
+              </>
+            ) : (
+              <>
+                <View style={styles.escalationIconBox}>
+                  <Ionicons name="warning" size={32} color="#DC2626" />
+                </View>
+
+                <Text style={styles.escalationTitle}>Emergency Contact Alert</Text>
+                <Text style={styles.escalationSub}>
+                  No response received. Would you like to call or dispatch GPS coordinates to your emergency contact?
+                </Text>
+
+                <View style={styles.contactDetailsBox}>
+                  <Text style={styles.contactNameText}>
+                    {userProfile?.emergencyContactName || 'Saved Emergency Contact'}
+                  </Text>
+                  <Text style={styles.contactPhoneText}>
+                    {userProfile?.emergencyContactPhone || '+91 98765 43210'}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.callContactBtn}
+                  onPress={handleCallEmergencyContact}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="phone-call" size={18} color="#FFFFFF" />
+                  <Text style={styles.callContactBtnText}>Call Emergency Contact</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.dismissEscalationBtn}
+                  onPress={() => setSafeCheckInVisible(false)}
+                >
+                  <Text style={styles.dismissEscalationBtnText}>I'm Safe - Cancel Alert</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.checkInPolicyText}>
+                  {SafetyMonitoringService.getSafetyEscalationPolicyText()}
+                </Text>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Vehicle Picker Modal */}
       <Modal
         visible={vehicleModalVisible}
         transparent
@@ -455,176 +820,136 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0E131F',
+    backgroundColor: '#000000',
   },
-  topSafeArea: {
+  topOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 20,
+    zIndex: 10,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
-  topHeaderWrapper: {
-    paddingTop: 10,
-    alignItems: 'center',
-  },
-  navModeBar: {
+  serviceProximityBanner: {
+    position: 'absolute',
+    top: 130,
+    left: 16,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.92)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 16,
-    marginTop: 8,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    zIndex: 15,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
     elevation: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2563EB',
   },
-  navModeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  serviceProximityIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  liveGpsDot: {
-    backgroundColor: '#10B981',
+  serviceProximityTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
   },
-  simDot: {
-    backgroundColor: '#F59E0B',
-  },
-  liveDot: {
-    backgroundColor: '#10B981',
-  },
-  pausedDot: {
-    backgroundColor: '#EF4444',
-  },
-  navModeText: {
-    color: '#FFFFFF',
+  serviceProximitySub: {
     fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    color: '#64748B',
+    marginTop: 2,
   },
-  switchModeBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+  serviceProximityViewBtn: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginRight: 6,
   },
-  switchModeBtnActive: {
-    backgroundColor: 'rgba(245, 158, 11, 0.35)',
+  serviceProximityViewBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#2563EB',
   },
-  switchModeBtnText: {
-    color: '#93C5FD',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  rightControlsCol: {
+  rightBar: {
     position: 'absolute',
-    top: '23%',
+    top: 190,
     right: 16,
-    zIndex: 25,
+    zIndex: 10,
     gap: 10,
   },
-  floatingRoundBtn: {
+  actionBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16,
-    shadowRadius: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
     elevation: 4,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  vehicleBtn: {
-    borderColor: '#93C5FD',
-    backgroundColor: '#EFF6FF',
-  },
-  walkVehicleBtn: {
-    borderColor: '#6EE7B7',
-    backgroundColor: '#ECFDF5',
-  },
-  walkIconText: {
-    fontSize: 20,
-    lineHeight: 22,
-  },
-  drivingActiveBtn: {
-    borderColor: '#BBF7D0',
-    backgroundColor: '#F0FDF4',
-  },
-  gpsLiveBtn: {
-    borderColor: '#93C5FD',
-    backgroundColor: '#EFF6FF',
-  },
-  speedPillBtn: {
-    backgroundColor: '#F8FAFC',
-  },
-  speedPillText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  hazardRoundBtn: {
-    borderColor: '#FECACA',
-    backgroundColor: '#FFFFFF',
-  },
   speedometerContainer: {
     position: 'absolute',
-    bottom: 125,
-    left: 18,
+    bottom: 140,
+    left: 16,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: 8,
-    zIndex: 22,
+    zIndex: 10,
   },
   speedometerHUD: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    minWidth: 72,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.22,
-    shadowRadius: 6,
-    elevation: 6,
-    borderWidth: 2.5,
-    borderColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
   },
   speedometerHUDOverSpeed: {
     borderColor: '#EF4444',
-    backgroundColor: '#FFF1F2',
+    backgroundColor: 'rgba(220, 38, 38, 0.95)',
   },
   speedValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0F172A',
-    lineHeight: 24,
-    letterSpacing: -0.5,
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -1,
   },
   speedValueOverSpeed: {
-    color: '#DC2626',
+    color: '#FFFFFF',
   },
   speedUnit: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#64748B',
-    marginTop: -1,
-    letterSpacing: 0.2,
+    color: '#94A3B8',
+    marginTop: -2,
+    letterSpacing: 0.5,
   },
   speedLimitSign: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
     borderWidth: 3,
     borderColor: '#DC2626',
@@ -632,18 +957,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
   },
   speedLimitSignNumber: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '900',
-    color: '#111827',
-    lineHeight: 14,
+    color: '#000000',
+    lineHeight: 18,
   },
   speedLimitSignLabel: {
-    fontSize: 6,
+    fontSize: 7,
     fontWeight: '800',
     color: '#DC2626',
     letterSpacing: 0.3,
@@ -653,26 +978,325 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    zIndex: 20,
+    zIndex: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  speedDropCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  speedDropHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  speedDropIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  speedDropTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  speedDropSub: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  speedDropQuestion: {
+    fontSize: 14,
+    color: '#334155',
+    lineHeight: 20,
+    marginBottom: 14,
+    fontWeight: '600',
+  },
+  speedDropOptions: {
+    gap: 8,
+  },
+  speedDropOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  speedDropOptionEmoji: {
+    fontSize: 22,
+  },
+  speedDropOptionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  speedDropOptionSub: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  speedDropPolicyNote: {
+    fontSize: 11,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 12,
+    fontStyle: 'italic',
+  },
+  servicesDrawerCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
+    maxHeight: '80%',
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  drawerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  drawerFilterScroll: {
+    marginBottom: 12,
+  },
+  drawerFilterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    marginRight: 6,
+  },
+  drawerFilterPillActive: {
+    backgroundColor: '#2563EB',
+  },
+  drawerFilterText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  drawerFilterTextActive: {
+    color: '#FFFFFF',
+  },
+  drawerServiceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  drawerServiceIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drawerServiceName: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  drawerServiceDist: {
+    fontSize: 11,
+    color: '#2563EB',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  drawerServiceHours: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  drawerCallBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkInCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+  },
+  checkInCountdownCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#2563EB',
+    marginBottom: 12,
+  },
+  checkInCountdownNumber: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#2563EB',
+  },
+  checkInCountdownSec: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    marginTop: -4,
+  },
+  checkInTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  checkInSub: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  imOkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10B981',
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: 10,
+  },
+  imOkButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  needHelpButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEE2E2',
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 6,
+  },
+  needHelpButtonText: {
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  checkInPolicyText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 14,
+    lineHeight: 14,
+  },
+  escalationIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  escalationTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#DC2626',
+  },
+  escalationSub: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 16,
+    marginBottom: 14,
+  },
+  contactDetailsBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 12,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  contactNameText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  contactPhoneText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563EB',
+    marginTop: 2,
+  },
+  callContactBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#DC2626',
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: 8,
+  },
+  callContactBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  dismissEscalationBtn: {
+    paddingVertical: 8,
+  },
+  dismissEscalationBtnText: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '700',
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'flex-end',
   },
   vehiclePickerCard: {
-    width: '100%',
-    maxWidth: 380,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 36,
   },
   pickerHeader: {
     flexDirection: 'row',
@@ -696,20 +1320,20 @@ const styles = StyleSheet.create({
   vehicleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    backgroundColor: '#F8FAFC',
     borderRadius: 16,
+    padding: 12,
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
   },
   vehicleRowSelected: {
-    borderColor: '#2563EB',
     backgroundColor: '#EFF6FF',
+    borderColor: '#2563EB',
   },
   vehicleIconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
@@ -727,10 +1351,10 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   vehicleLabelSelected: {
-    color: '#1D4ED8',
+    color: '#2563EB',
   },
   vehicleDesc: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textSecondary,
     marginTop: 2,
   },

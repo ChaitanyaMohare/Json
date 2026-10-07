@@ -262,3 +262,72 @@ export interface UserRewardTier {
   perks: string[];
 }
 
+// ==========================================
+// ADVANCED ROAD SAFETY & ROUTE INTELLIGENCE
+// ==========================================
+
+export interface SpeedDropEvent {
+  id: string;
+  previousSpeedKmh: number;
+  currentSpeedKmh: number;
+  deltaKmh: number;
+  timestamp: number;
+  coordinates: Coordinates;
+  roadName?: string;
+  status: 'detected' | 'user_responded' | 'dismissed';
+  userResponse?: 'traffic' | 'blockage' | 'accident' | 'normal_stop';
+}
+
+export type CorridorServiceCategory =
+  | 'petrol'
+  | 'cng'
+  | 'diesel'
+  | 'garage'
+  | 'hospital'
+  | 'police';
+
+export interface RouteCorridorService {
+  id: string;
+  name: string;
+  category: CorridorServiceCategory;
+  distanceFromStartKm: number;
+  distanceFromRouteMeters: number;
+  address: string;
+  coordinates: Coordinates;
+  phone?: string;
+  operatingHours: string;
+  rating: number;
+  isOpen: boolean;
+  fuelTypes?: string[];
+  iconName: string;
+  color: string;
+}
+
+export interface HistoricalRiskAdvisory {
+  id: string;
+  routeId: string;
+  riskType: 'monsoon_flooding' | 'winter_fog' | 'landslide_ghat' | 'high_accident_zone' | 'waterlogging';
+  title: string;
+  riskLevel: 'Moderate' | 'High' | 'Severe';
+  warningText: string;
+  seasonalPeriod: string;
+  historicalIncidentCount: number;
+  affectedSegment: string;
+  alternativeRouteSuggestion: {
+    alternativeRouteId: string;
+    title: string;
+    extraDuration: string;
+    safetyBenefit: string;
+  };
+}
+
+export interface LongRouteSafetyState {
+  isActive: boolean;
+  stationaryDurationMinutes: number;
+  lastStationaryLocation?: Coordinates;
+  checkInStatus: 'normal' | 'pending_checkin' | 'emergency_contact_alerted' | 'resolved';
+  checkInCountdownSeconds: number;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+}
+
