@@ -236,65 +236,83 @@ export const RewardsScreen: React.FC<RewardsScreenProps> = ({ onBack }) => {
 
         {/* NAVIGATION TABS */}
         <View style={styles.tabsContainer}>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'simulator' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('simulator')}
-            activeOpacity={0.8}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabsScrollContent}
           >
-            <MaterialCommunityIcons
-              name="calculator-variant-outline"
-              size={18}
-              color={activeTab === 'simulator' ? '#2563EB' : '#64748B'}
-            />
-            <Text style={[styles.tabText, activeTab === 'simulator' && styles.tabTextActive]}>
-              Rules & Simulator
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, activeTab === 'simulator' && styles.tabButtonActive]}
+              onPress={() => setActiveTab('simulator')}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons
+                name="calculator-variant-outline"
+                size={16}
+                color={activeTab === 'simulator' ? '#2563EB' : '#64748B'}
+              />
+              <Text
+                style={[styles.tabText, activeTab === 'simulator' && styles.tabTextActive]}
+                numberOfLines={1}
+              >
+                Rules & Simulator
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'redeem' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('redeem')}
-            activeOpacity={0.8}
-          >
-            <Feather
-              name="shopping-bag"
-              size={17}
-              color={activeTab === 'redeem' ? '#2563EB' : '#64748B'}
-            />
-            <Text style={[styles.tabText, activeTab === 'redeem' && styles.tabTextActive]}>
-              Store ({REWARD_CATALOG.length})
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, activeTab === 'redeem' && styles.tabButtonActive]}
+              onPress={() => setActiveTab('redeem')}
+              activeOpacity={0.8}
+            >
+              <Feather
+                name="shopping-bag"
+                size={15}
+                color={activeTab === 'redeem' ? '#2563EB' : '#64748B'}
+              />
+              <Text
+                style={[styles.tabText, activeTab === 'redeem' && styles.tabTextActive]}
+                numberOfLines={1}
+              >
+                Store ({REWARD_CATALOG.length})
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'earnings' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('earnings')}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="shield-checkmark-outline"
-              size={18}
-              color={activeTab === 'earnings' ? '#2563EB' : '#64748B'}
-            />
-            <Text style={[styles.tabText, activeTab === 'earnings' && styles.tabTextActive]}>
-              Pools & History
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, activeTab === 'earnings' && styles.tabButtonActive]}
+              onPress={() => setActiveTab('earnings')}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={16}
+                color={activeTab === 'earnings' ? '#2563EB' : '#64748B'}
+              />
+              <Text
+                style={[styles.tabText, activeTab === 'earnings' && styles.tabTextActive]}
+                numberOfLines={1}
+              >
+                Pools & History
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'leaderboard' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('leaderboard')}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="trophy-outline"
-              size={18}
-              color={activeTab === 'leaderboard' ? '#2563EB' : '#64748B'}
-            />
-            <Text style={[styles.tabText, activeTab === 'leaderboard' && styles.tabTextActive]}>
-              Leaders
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, activeTab === 'leaderboard' && styles.tabButtonActive]}
+              onPress={() => setActiveTab('leaderboard')}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="trophy-outline"
+                size={16}
+                color={activeTab === 'leaderboard' ? '#2563EB' : '#64748B'}
+              />
+              <Text
+                style={[styles.tabText, activeTab === 'leaderboard' && styles.tabTextActive]}
+                numberOfLines={1}
+              >
+                Leaders
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
 
         {/* TAB 1: RULES & INTERACTIVE SIMULATOR */}
@@ -1376,27 +1394,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#334155',
   },
   tabsContainer: {
-    flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     borderRadius: 14,
     padding: 4,
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  tabsScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    gap: 4,
   },
   tabButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
     borderRadius: 10,
-    gap: 4,
+    gap: 6,
   },
   tabButtonActive: {
     backgroundColor: '#EFF6FF',
   },
   tabText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '600',
     color: '#64748B',
   },

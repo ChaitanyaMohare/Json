@@ -42,7 +42,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenReport,
   onOpenEmergency,
 }) => {
-  const { currentLocation, currentHeading, requestLocation } = useApp();
+  const { currentLocation, currentHeading, requestLocation, incidents } = useApp();
   const [recenterTrigger, setRecenterTrigger] = useState(0);
   const [servicesSheetVisible, setServicesSheetVisible] = useState(false);
   const [filtersSheetVisible, setFiltersSheetVisible] = useState(false);
@@ -85,7 +85,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         currentLocation={currentLocation}
         currentHeading={currentHeading}
         recenterTrigger={recenterTrigger}
-        incidents={mockIncidents}
+        incidents={incidents}
         services={nearbyServices}
         layers={layers}
         onSelectIncident={handleSelectIncident}

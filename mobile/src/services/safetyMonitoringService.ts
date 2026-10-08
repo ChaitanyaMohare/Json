@@ -456,7 +456,7 @@ export class SafetyMonitoringService {
         affectedSegment: 'Express Bypass Cloverleaf Ramp (Km 4.2 - Km 5.8)',
         alternativeRouteSuggestion: {
           alternativeRouteId: altRoute.id,
-          title: 'Recommended Divided Highway Corridor',
+          title: 'Safest Divided Highway Corridor',
           extraDuration: '+2 min',
           safetyBenefit: '97% Trust Score with barrier-divided safety lanes',
         },

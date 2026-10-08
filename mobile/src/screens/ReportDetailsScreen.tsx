@@ -87,7 +87,7 @@ export const ReportDetailsScreen: React.FC<ReportDetailsScreenProps> = ({
       );
     } else {
       Alert.alert(
-        'Safety Report Submitted! 🪙',
+        'Safety Report Submitted!',
         `Awesome! You are Reporter #${submitted.reporterRank || 1} of 5 for this hazard. +${submitted.coinsAwarded || 50} Waysure Safety Coins have been credited to your rewards account!`,
         [{ text: 'View Rewards', onPress: onSubmitSuccess }]
       );
@@ -155,7 +155,7 @@ export const ReportDetailsScreen: React.FC<ReportDetailsScreenProps> = ({
               </View>
               {!thresholdInfo.isThresholdCapped && (
                 <View style={styles.coinsBadge}>
-                  <Text style={styles.coinsBadgeText}>+{thresholdInfo.estimatedCoins} 🪙</Text>
+                  <Text style={styles.coinsBadgeText}>+{thresholdInfo.estimatedCoins} Coins</Text>
                 </View>
               )}
             </View>

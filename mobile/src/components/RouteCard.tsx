@@ -63,16 +63,20 @@ export const RouteCard: React.FC<RouteCardProps> = ({
       {/* Middle Text Info */}
       <View style={styles.contentCol}>
         <View style={styles.titleRow}>
-          <Text style={styles.categoryTitle}>{route.name}</Text>
+          <Text style={styles.categoryTitle}>
+            {route.type === 'recommended' && (route.name === 'Recommended' || route.name === 'Recommended Route')
+              ? 'Safest Route'
+              : route.name}
+          </Text>
           {isFastest && (
             <View style={styles.badgeFastest}>
-              <Ionicons name="flash" size={10} color="#2563EB" style={{ marginRight: 2 }} />
+              <Ionicons name="flash" size={10} color="#2563EB" />
               <Text style={styles.badgeFastestText}>FASTEST</Text>
             </View>
           )}
           {isRecommended && (
             <View style={styles.badgeRecommended}>
-              <Ionicons name="star" size={10} color="#16A34A" style={{ marginRight: 2 }} />
+              <Ionicons name="star" size={10} color="#16A34A" />
               <Text style={styles.badgeRecommendedText}>BEST</Text>
             </View>
           )}
@@ -153,10 +157,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   badgeFastest: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FEF3C7',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: 6,
+    gap: 3,
   },
   badgeFastestText: {
     fontSize: 9,
@@ -164,10 +171,13 @@ const styles = StyleSheet.create({
     color: '#D97706',
   },
   badgeRecommended: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#ECFDF5',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: 6,
+    gap: 3,
   },
   badgeRecommendedText: {
     fontSize: 9,

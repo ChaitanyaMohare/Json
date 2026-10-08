@@ -74,7 +74,7 @@ export const mockRoutes: RouteOption[] = [
   {
     id: 'route-recommended',
     type: 'recommended',
-    name: 'Recommended',
+    name: 'Safest Route',
     duration: 'Calculating...',
     distance: 'Calculating...',
     tagline: 'Optimal route via national highways',

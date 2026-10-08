@@ -1,10 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { Incident } from '../types';
 
 interface IncidentAlertSheetProps {
   visible: boolean;
+  incident?: Incident | null;
+  distanceText?: string;
   onKeepRoute: () => void;
   onViewSaferRoute: () => void;
   onClose: () => void;
@@ -12,11 +15,20 @@ interface IncidentAlertSheetProps {
 
 export const IncidentAlertSheet: React.FC<IncidentAlertSheetProps> = ({
   visible,
+  incident,
+  distanceText,
   onKeepRoute,
   onViewSaferRoute,
   onClose,
 }) => {
   if (!visible) return null;
+
+  const title = incident?.title ? `${incident.title} Ahead` : 'Hazard Ahead';
+  const displayDist = distanceText || incident?.distance || 'Ahead on route';
+  const location = incident?.location || 'Active Route';
+  const severity = incident?.severity || 'Caution';
+  const desc = incident?.description || 'Active road hazard reported by rider.';
+  const photoUri = incident?.photoUri || (incident?.photos && incident.photos[0] ? incident.photos[0].uri : null);
 
   return (
     <View style={styles.sheetOverlay}>
@@ -27,8 +39,8 @@ export const IncidentAlertSheet: React.FC<IncidentAlertSheetProps> = ({
             <MaterialCommunityIcons name="car-brake-alert" size={24} color="#EF4444" />
           </View>
           <View style={styles.titleCol}>
-            <Text style={styles.titleText}>Accident Ahead</Text>
-            <Text style={styles.subtitleText}>1.4 km · Dehradun Rd</Text>
+            <Text style={styles.titleText}>{title}</Text>
+            <Text style={styles.subtitleText}>{displayDist} · {location}</Text>
           </View>
           <TouchableOpacity
             activeOpacity={0.7}
@@ -39,16 +51,29 @@ export const IncidentAlertSheet: React.FC<IncidentAlertSheetProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Severity Badge */}
+        {/* Severity Badge & Distance Pill */}
         <View style={styles.badgeRow}>
           <View style={styles.severityBadge}>
-            <Text style={styles.severityText}>High severity</Text>
+            <Text style={styles.severityText}>{severity} Severity</Text>
+          </View>
+          <View style={styles.distanceBadge}>
+            <Ionicons name="navigate" size={12} color="#2563EB" />
+            <Text style={styles.distanceBadgeText}>{displayDist}</Text>
           </View>
         </View>
 
+        {/* Optional Incident Photo */}
+        {photoUri && (
+          <Image
+            source={{ uri: photoUri }}
+            style={styles.incidentPhoto}
+            resizeMode="cover"
+          />
+        )}
+
         {/* Incident Description */}
         <Text style={styles.descriptionText}>
-          Multiple user reports. Road partially blocked.
+          {desc}
         </Text>
 
         {/* Action Buttons: Keep Route vs View Safer Route */}
@@ -136,7 +161,9 @@ const styles = StyleSheet.create({
   },
   badgeRow: {
     flexDirection: 'row',
-    marginBottom: 10,
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
   },
   severityBadge: {
     backgroundColor: '#FEF2F2',
@@ -150,6 +177,29 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontSize: 12,
     fontWeight: '700',
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  distanceBadgeText: {
+    color: '#2563EB',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  incidentPhoto: {
+    width: '100%',
+    height: 140,
+    borderRadius: 14,
+    marginBottom: 12,
+    backgroundColor: '#F1F5F9',
   },
   descriptionText: {
     fontSize: 14,

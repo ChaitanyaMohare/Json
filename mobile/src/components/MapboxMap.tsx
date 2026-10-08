@@ -134,7 +134,7 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
         {showAlternativeRoutes && (
           <View style={styles.alternativeBubblesRow}>
             <View style={styles.bubbleCurrent}>
-              <Text style={styles.bubbleCurrentDuration}>Recommended</Text>
+              <Text style={styles.bubbleCurrentDuration}>Safest Route</Text>
               <Text style={styles.bubbleCurrentLabel}>Fastest highway</Text>
             </View>
             <View style={styles.bubbleSafer}>

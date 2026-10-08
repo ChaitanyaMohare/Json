@@ -5,6 +5,7 @@ import {
   DestinationItem,
   RouteOption,
   TravelMode,
+  Incident,
   IncidentType,
   Report,
   SavedPlace,
@@ -22,6 +23,7 @@ import {
 } from '../types';
 import {
   mockRoutes,
+  mockIncidents,
   DEFAULT_COORDS,
   DEFAULT_USER_PROFILE,
 } from '../data/mockData';
@@ -96,6 +98,11 @@ export interface AppContextType {
   // Map Layers
   mapLayers: MapLayersState;
   toggleMapLayer: (layer: keyof MapLayersState) => void;
+
+  // Active Map Incidents
+  incidents: Incident[];
+  addIncident: (incident: Incident) => void;
+  removeIncident: (id: string) => void;
 
   // Reports
   submittedReports: Report[];
@@ -224,6 +231,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<boolean>(false);
   const [selectedIncidentType, setSelectedIncidentType] =
     useState<IncidentType>('accident');
+  const [incidents, setIncidents] = useState<Incident[]>(mockIncidents);
 
   const [powerSafetyMode, setPowerSafetyMode] = useState<boolean>(true);
 
@@ -653,6 +661,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     setSubmittedReports((prev) => [newReport, ...prev]);
+
+    // Immediately push newly submitted report as a live incident on the map
+    const newIncident: Incident = {
+      id: `inc-${reportId}`,
+      type: incidentType,
+      title,
+      location: targetLabel,
+      distance: 'Just reported near you',
+      severity: poolSeverity === 'HIGH' ? 'High' : poolSeverity === 'MEDIUM' ? 'Medium' : 'Low',
+      confidence: effectiveGeoTag ? 98 : 88,
+      status: 'Confirmed',
+      timeAgo: 'Just now',
+      description,
+      coordinates: {
+        latitude: targetLat,
+        longitude: targetLng,
+      },
+      supportingReports: orderRank,
+      photoUri: effectivePhotoUri,
+      photos: photos || (effectivePhotoUri && effectiveGeoTag ? [{ id: `photo-${Date.now()}`, uri: effectivePhotoUri, geoTag: effectiveGeoTag }] : undefined),
+      geoTag: effectiveGeoTag || undefined,
+    };
+    setIncidents((prev) => [newIncident, ...prev]);
+
     ReportService.saveReport(newReport).catch((err) =>
       console.warn('Failed saving report to storage:', err)
     );
@@ -810,6 +842,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     return { coinsEarned: coins, newBalance: safetyCoins + coins };
   };
 
+  const addIncident = (incident: Incident) => {
+    setIncidents((prev) => [incident, ...prev]);
+  };
+
+  const removeIncident = (id: string) => {
+    setIncidents((prev) => prev.filter((i) => i.id !== id));
+  };
+
   const redeemRewardVoucher = async (
     rewardItem: RewardCatalogItem
   ): Promise<{ success: boolean; voucher?: RedeemedVoucher; error?: string }> => {
@@ -923,6 +963,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setSelectedIncidentType,
         mapLayers,
         toggleMapLayer,
+        incidents,
+        addIncident,
+        removeIncident,
         submittedReports,
         submitNewReport,
         getIncidentReportThresholdInfo,

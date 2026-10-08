@@ -130,7 +130,9 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
       } else if (data.type === 'ARRIVED' && onArrived) {
         onArrived();
       } else if (data.type === 'SELECT_INCIDENT' && onSelectIncident && data.incident) {
-        onSelectIncident(data.incident);
+        const inc = { ...data.incident };
+        if (data.distanceText) inc.distance = data.distanceText;
+        onSelectIncident(inc);
       } else if (data.type === 'SELECT_SERVICE' && onSelectService && data.service) {
         onSelectService(data.service);
       }
@@ -844,19 +846,37 @@ const InteractiveMapComponent: React.FC<InteractiveMapProps> = ({
           zIndexOffset: 1100
         });
 
+        // Compute real-time distance between rider's car and incident location
+        var vPos = vehicleMarker ? vehicleMarker.getLatLng() : { lat: userCoords[0], lng: userCoords[1] };
+        var distM = calcDistanceMeters([vPos.lat, vPos.lng], [inc.coordinates.latitude, inc.coordinates.longitude]);
+        var distText = distM < 1000
+          ? Math.round(distM) + ' m from your car'
+          : (distM / 1000).toFixed(1) + ' km from your car';
+
         var popupHtml = '<div class="poi-popup-card">' +
           '<div class="poi-popup-header">' +
             '<span class="poi-popup-pill" style="background:#EF4444;">HAZARD</span>' +
-            '<span class="poi-popup-dist" style="color:#EF4444;">' + (inc.severity || 'Caution') + '</span>' +
+            '<span class="poi-popup-dist" style="color:#EF4444;font-weight:800;">' + distText + '</span>' +
           '</div>' +
           '<div class="poi-popup-title">' + inc.title + '</div>' +
-          '<div class="poi-popup-sub">' + inc.location + '</div>' +
+          '<div class="poi-popup-sub">' + (inc.location || 'Reported Spot') + '</div>' +
+          '<div class="poi-popup-sub" style="margin-top:5px;color:#2563EB;font-weight:700;">' + distText + '</div>' +
           (inc.description ? '<div class="poi-popup-sub" style="margin-top:4px;">' + inc.description + '</div>' : '') +
         '</div>';
 
         marker.bindPopup(popupHtml, { offset: [0, -14] });
         marker.on('click', function() {
-          sendAppMessage({ type: 'SELECT_INCIDENT', incident: inc });
+          var curPos = vehicleMarker ? vehicleMarker.getLatLng() : { lat: userCoords[0], lng: userCoords[1] };
+          var curDistM = calcDistanceMeters([curPos.lat, curPos.lng], [inc.coordinates.latitude, inc.coordinates.longitude]);
+          var curDistText = curDistM < 1000
+            ? Math.round(curDistM) + ' m from your car'
+            : (curDistM / 1000).toFixed(1) + ' km from your car';
+          sendAppMessage({
+            type: 'SELECT_INCIDENT',
+            incident: inc,
+            distanceMeters: curDistM,
+            distanceText: curDistText
+          });
         });
 
         incidentLayerGroup.addLayer(marker);

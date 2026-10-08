@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -24,11 +24,13 @@ import {
   SpeedDropEvent,
   RouteCorridorService,
   CorridorServiceCategory,
+  Incident,
 } from '../types';
 import { useApp } from '../context/AppContext';
 import { VehicleIconType } from '../data/mockData';
 import { NavigationProgressData } from '../components/InteractiveMap';
 import { SafetyMonitoringService } from '../services/safetyMonitoringService';
+import { calculateHaversineDistanceMeters } from '../services/locationService';
 
 interface NavigationScreenProps {
   route: RouteOption;
@@ -61,10 +63,13 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
     submitNewReport,
     powerSafetyMode,
     setPowerSafetyMode,
+    incidents,
   } = useApp();
 
   const [layersSheetVisible, setLayersSheetVisible] = useState(false);
   const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
+  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
+  const [dismissedIncidentIds, setDismissedIncidentIds] = useState<string[]>([]);
   
   // Auto-sync selected vehicle icon with selected travel mode
   const effectiveMode = route?.travelMode || travelMode;
@@ -141,6 +146,32 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
         ? `Ride towards ${selectedDestination.name}`
         : `Drive towards ${selectedDestination.name}`,
   });
+
+  // REAL-TIME DISTANCE TRACKING: Computes distance between rider's car and active reported incidents
+  const nearestIncidentAlert = useMemo(() => {
+    if (!incidents || incidents.length === 0 || !currentLocation) return null;
+    let closest: {
+      incident: Incident;
+      distanceMeters: number;
+      distanceText: string;
+    } | null = null;
+
+    for (const inc of incidents) {
+      if (!inc.coordinates || !inc.coordinates.latitude || !inc.coordinates.longitude) continue;
+      const d = calculateHaversineDistanceMeters(
+        currentLocation.latitude,
+        currentLocation.longitude,
+        inc.coordinates.latitude,
+        inc.coordinates.longitude
+      );
+      if (!closest || d < closest.distanceMeters) {
+        const dText =
+          d < 1000 ? `${Math.round(d)} m from your car` : `${(d / 1000).toFixed(1)} km from your car`;
+        closest = { incident: inc, distanceMeters: d, distanceText: dText };
+      }
+    }
+    return closest;
+  }, [incidents, currentLocation?.latitude, currentLocation?.longitude]);
 
   // Fetch Corridor Services distributed along route
   const corridorServices = SafetyMonitoringService.getRouteCorridorServices(
@@ -421,6 +452,11 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
         }}
         destinationLabel={selectedDestination?.name}
         corridorServices={corridorServices}
+        incidents={incidents}
+        onSelectIncident={(inc) => {
+          setSelectedIncident(inc);
+          setIncidentAlertVisible(true);
+        }}
         isNavigating={true}
         isDriving={isDriving}
         simulationSpeed={simSpeed}
@@ -487,8 +523,52 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
         )}
       </SafeAreaView>
 
+      {/* IN-NAVIGATION LIVE HAZARD PROXIMITY BANNER (TELLS DISTANCE TO RIDER'S CAR) */}
+      {nearestIncidentAlert &&
+        nearestIncidentAlert.distanceMeters <= 3000 &&
+        !dismissedIncidentIds.includes(nearestIncidentAlert.incident.id) && (
+          <View style={styles.hazardProximityBanner}>
+            <View style={styles.hazardProximityIconBox}>
+              <Ionicons name="warning" size={18} color="#DC2626" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.hazardProximityTitle}>
+                  {nearestIncidentAlert.incident.title} Ahead
+                </Text>
+                <View style={styles.hazardSeverityBadge}>
+                  <Text style={styles.hazardSeverityText}>
+                    {nearestIncidentAlert.incident.severity || 'Caution'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.hazardProximitySub}>
+                {nearestIncidentAlert.distanceText} · {nearestIncidentAlert.incident.location}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.hazardProximityViewBtn}
+              onPress={() => {
+                setSelectedIncident(nearestIncidentAlert.incident);
+                setIncidentAlertVisible(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.hazardProximityViewBtnText}>View</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() =>
+                setDismissedIncidentIds((prev) => [...prev, nearestIncidentAlert.incident.id])
+              }
+              style={{ padding: 4 }}
+            >
+              <Feather name="x" size={16} color="#94A3B8" />
+            </TouchableOpacity>
+          </View>
+        )}
+
       {/* IN-NAVIGATION UPCOMING SERVICE PROXIMITY BANNER */}
-      {activeServiceProximity && (
+      {activeServiceProximity && !nearestIncidentAlert && (
         <View style={styles.serviceProximityBanner}>
           <View style={[styles.serviceProximityIcon, { backgroundColor: `${activeServiceProximity.color}20` }]}>
             <Ionicons name={activeServiceProximity.iconName as any} size={20} color={activeServiceProximity.color} />
@@ -1338,6 +1418,12 @@ export const NavigationScreen: React.FC<NavigationScreenProps> = ({
       {/* Incident Alert Bottom Sheet */}
       <IncidentAlertSheet
         visible={incidentAlertVisible}
+        incident={selectedIncident || nearestIncidentAlert?.incident}
+        distanceText={
+          nearestIncidentAlert?.incident.id === selectedIncident?.id
+            ? nearestIncidentAlert?.distanceText
+            : selectedIncident?.distance
+        }
         onKeepRoute={() => setIncidentAlertVisible(false)}
         onViewSaferRoute={() => {
           setIncidentAlertVisible(false);
@@ -1427,6 +1513,73 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 11,
     letterSpacing: 0.3,
+  },
+  hazardProximityBanner: {
+    position: 'absolute',
+    top: 130,
+    left: 16,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 5,
+    borderLeftWidth: 4,
+    borderLeftColor: '#DC2626',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  hazardProximityIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hazardProximityTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  hazardSeverityBadge: {
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  hazardSeverityText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#DC2626',
+  },
+  hazardProximitySub: {
+    fontSize: 11,
+    color: '#DC2626',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  hazardProximityViewBtn: {
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  hazardProximityViewBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#DC2626',
   },
   serviceProximityBanner: {
     position: 'absolute',

@@ -178,7 +178,7 @@ export class DirectionsService {
       {
         id: 'route-recommended',
         type: 'recommended',
-        name: 'Recommended Route',
+        name: 'Safest Route',
         duration: this.formatDuration(baseDurationSec),
         distance: this.formatDistance(roadDistMeters),
         tagline:
@@ -325,7 +325,7 @@ export class DirectionsService {
       const recommendedRoute: RouteOption = {
         id: 'route-recommended',
         type: 'recommended',
-        name: 'Recommended Route',
+        name: 'Safest Route',
         duration: this.formatDuration(recDur),
         distance: this.formatDistance(recMetrics.distM),
         tagline:
@@ -416,7 +416,7 @@ export class DirectionsService {
       {
         id: 'route-recommended',
         type: 'recommended',
-        name: 'Recommended Route',
+        name: 'Safest Route',
         duration: this.formatDuration(metrics.durSec),
         distance: this.formatDistance(metrics.distM),
         tagline:
