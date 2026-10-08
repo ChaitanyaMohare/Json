@@ -27,9 +27,10 @@ function NavigationMenu() {
     { name: 'Dashboard', href: '/admin', icon: DashboardIcon },
     { name: 'Incidents', href: '/admin/incidents', icon: AlertTriangle },
     { name: 'Reports', href: '/admin/reports', icon: FileText, badge: '3' },
-    { name: 'Analytics', href: '/admin/analytics', icon: AnalyticsIcon },
+    { name: 'Routes & Hotspots', href: '/admin/map', icon: MapIcon },
+    { name: 'Power Safety', href: '/admin/analytics', icon: AnalyticsIcon },
     { name: 'Users', href: '/admin/users', icon: Users },
-    { name: 'Map View', href: '/admin/map', icon: MapIcon },
+    { name: 'Rewards', href: '/admin/rewards', icon: Sprout },
     { name: 'Settings', href: '/admin/settings', icon: SettingsIcon },
   ];
 
@@ -47,12 +48,12 @@ function NavigationMenu() {
             href={item.href}
             className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
               isActive
-                ? 'bg-[#0d7a68] text-white shadow-sm font-semibold'
-                : 'text-slate-300/80 hover:text-white hover:bg-white/5'
+                ? 'bg-[#0d9488] text-white shadow-sm font-semibold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <div className="flex items-center gap-3">
-              <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+              <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
               <span>{item.name}</span>
             </div>
             {item.badge && (
@@ -118,20 +119,20 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen bg-[#f4f7f6] text-slate-800 flex flex-col md:flex-row antialiased font-sans">
-      {/* Dark Forest / Slate Sidebar matching screenshot */}
-      <aside className="w-full md:w-60 bg-[#0d1f27] text-white flex flex-col justify-between shrink-0 shadow-xl border-r border-[#162e39] z-20">
+      {/* Light Sidebar with Sticky Positioning */}
+      <aside className="w-full md:w-60 bg-white text-slate-800 flex flex-col justify-between shrink-0 shadow-lg border-r border-slate-200 md:sticky md:top-0 md:h-screen z-20 overflow-y-auto">
         <div>
           {/* Logo / Brand Header */}
-          <div className="h-18 px-4 flex items-center gap-3 border-b border-white/5">
-            <div className="w-8 h-8 rounded-xl bg-[#0d9488] flex items-center justify-center text-white font-black text-sm shadow-sm ring-1 ring-white/20">
-              A
+          <div className="h-18 px-4 flex items-center gap-3 border-b border-slate-200">
+            <div className="w-8 h-8 rounded-xl bg-[#0d9488] flex items-center justify-center text-white font-black text-sm shadow-sm">
+              W
             </div>
             <div>
-              <div className="font-bold text-base text-white tracking-tight leading-tight">
-                RouteGuard
+              <div className="font-bold text-base text-slate-900 tracking-tight leading-tight">
+                Waysure
               </div>
-              <div className="text-[10px] text-slate-400 font-normal">
-                Road Safety Intelligence
+              <div className="text-[10px] text-slate-500 font-normal">
+                Admin Dashboard
               </div>
             </div>
           </div>
@@ -142,22 +143,22 @@ export default function AdminLayout({
           </Suspense>
         </div>
 
-        {/* Bottom Banner matching screenshot: "Safer Roads for a Better Tomorrow" */}
-        <div className="p-3 m-3 rounded-2xl bg-gradient-to-b from-[#142d38] to-[#0c181f] border border-white/10 relative overflow-hidden shadow-inner">
-          {/* Highway Graphic Backdrop */}
+        {/* Bottom Banner - Lighter theme */}
+        <div className="p-3 m-3 rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 border border-teal-200 relative overflow-hidden shadow-sm">
+          {/* Motorcyclist on Highway Graphic Backdrop */}
           <div
-            className="absolute inset-0 opacity-20 bg-cover bg-center pointer-events-none"
+            className="absolute inset-0 opacity-10 bg-cover bg-center pointer-events-none"
             style={{
-              backgroundImage: `url('https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=400&auto=format&fit=crop&q=60')`
+              backgroundImage: `url('https://images.unsplash.com/photo-1558981285-6f0c94958bb6?w=400&auto=format&fit=crop&q=60')`
             }}
           />
           <div className="relative z-10 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-[#0d9488]/30 border border-[#14b8a6]/40 flex items-center justify-center text-[#2dd4bf] shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-teal-100 border border-teal-300 flex items-center justify-center text-teal-700 shrink-0">
               <Sprout className="w-4 h-4" />
             </div>
-            <span className="text-[11px] font-semibold text-white/90 leading-tight">
-              Safer Roads<br />
-              <span className="text-[10px] text-slate-400 font-normal">for a Better Tomorrow</span>
+            <span className="text-[11px] font-semibold text-slate-800 leading-tight">
+              Safer Riders<br />
+              <span className="text-[10px] text-slate-500 font-normal">Brighter Destinations</span>
             </span>
           </div>
         </div>
@@ -172,7 +173,7 @@ export default function AdminLayout({
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search Incidents, locations, or reports..."
+              placeholder="Search routes, locations, incidents, or users..."
               className="w-full bg-slate-50/80 hover:bg-slate-50 border border-slate-200 rounded-full pl-9 pr-8 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0d7a68] focus:bg-white transition-all"
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono">
@@ -225,7 +226,7 @@ export default function AdminLayout({
                 <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-50 text-xs">
                   <div className="px-3 py-2 border-b border-slate-100">
                     <p className="font-bold text-slate-800">Admin User</p>
-                    <p className="text-[10px] text-slate-400">admin@routeguard.io</p>
+                    <p className="text-[10px] text-slate-400">admin@waysure.io</p>
                   </div>
                   <button
                     onClick={handleLogout}

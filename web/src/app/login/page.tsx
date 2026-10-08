@@ -36,7 +36,7 @@ export default function LoginPage() {
           <div className="inline-flex w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 items-center justify-center mb-1">
             <RouteGuardLogo className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">RouteGuard</h1>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Waysure</h1>
           <p className="text-xs uppercase font-bold tracking-wider text-teal-600">
             Road Safety Intelligence
           </p>
@@ -69,7 +69,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@routeguard.io"
+                placeholder="admin@waysure.io"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors"
               />
             </div>
@@ -102,7 +102,7 @@ export default function LoginPage() {
         </form>
 
         <div className="text-center text-[11px] text-slate-400">
-          RouteGuard 30h Hackathon • Node.js + Next.js
+          Waysure 30h Hackathon • Node.js + Next.js
         </div>
       </div>
     </div>

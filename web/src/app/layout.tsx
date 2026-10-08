@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RouteGuard | Road Safety Intelligence",
-  description: "Monitor and manage road incidents in real-time",
+  title: "Waysure | Road Safety Intelligence",
+  description: "Monitor and manage road incidents in real-time - Safer Riders, Brighter Destinations",
 };
 
 export default function RootLayout({

@@ -9,7 +9,7 @@ export const RouteGuardLogo = ({ className = 'w-7 h-7', ...props }: IconProps) =
   <svg className={className} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
     <path d="M18 2L4 7.5V17.5C4 26 10 32 18 34C26 32 32 26 32 17.5V7.5L18 2Z" fill="#0D9488" />
     <path d="M18 6L7 10.5V17.5C7 24.2 11.7 29 18 30.5C24.3 29 29 24.2 29 17.5V10.5L18 6Z" fill="#14B8A6" />
-    <path d="M13 24L16 11H20L23 24H20.5L19.5 19H16.5L15.5 24H13Z" fill="white" />
+    <path d="M10 24L12.5 11H14.5L16.5 19L18.5 11H20.5L22.5 19L24.5 11H26.5L29 24H27L25 15L23 24H21L19 15L17 24H10Z" fill="white" />
     <line x1="18" y1="13" x2="18" y2="23" stroke="#042F2E" strokeWidth="1.5" strokeDasharray="2 2" />
   </svg>
 );
