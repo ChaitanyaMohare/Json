@@ -1,0 +1,364 @@
+export interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
+export type TravelMode = 'car' | 'bike' | 'walk';
+
+export type TravelPreference = 'Fastest' | 'Balanced' | 'Safety First';
+
+export type IncidentType =
+  | 'accident'
+  | 'road_blockage'
+  | 'road_damage'
+  | 'heavy_traffic'
+  | 'flooding'
+  | 'other';
+
+export type SeverityLevel = 'Low' | 'Medium' | 'High';
+
+export type VerificationStatus =
+  | 'Reported'
+  | 'Under Verification'
+  | 'Confirmed'
+  | 'Resolved';
+
+export type ReliabilityConfidence =
+  | 'High Confidence'
+  | 'Needs Verification'
+  | 'Suspicious';
+
+export type ServiceCategory =
+  | 'hospital'
+  | 'police'
+  | 'petrol'
+  | 'diesel'
+  | 'cng'
+  | 'garage'
+  | 'fuel';
+
+export interface DestinationItem {
+  id: string;
+  name: string;
+  state: string;
+  address?: string;
+  coordinates?: Coordinates;
+  subtitle?: string;
+  icon?: string;
+}
+
+export interface RouteOption {
+  id: string;
+  type: 'recommended' | 'fastest' | 'alternate';
+  name: string;
+  duration: string; // e.g. "2 hr 42 min"
+  distance: string; // e.g. "96 km"
+  tagline: string; // e.g. "Safer with real-time updates"
+  isRecommended?: boolean;
+  trustScore: number;
+  coordinates?: [number, number][]; // [lng, lat] GeoJSON array
+  durationSeconds?: number;
+  distanceMeters?: number;
+  arrivalTime?: string;
+  travelMode?: TravelMode;
+  routeSpecificIncidents?: Incident[];
+  routeSpecificServices?: RouteCorridorService[];
+  routeSpecificRisk?: HistoricalRiskAdvisory;
+}
+
+export interface QuickDestination {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: 'home' | 'briefcase' | 'map-pin';
+  destination: DestinationItem;
+}
+
+export interface Incident {
+  id: string;
+  type: IncidentType;
+  title: string;
+  location: string;
+  distance: string;
+  severity: SeverityLevel;
+  confidence: number;
+  status: VerificationStatus;
+  coordinates?: Coordinates;
+  timeAgo?: string;
+  description?: string;
+  supportingReports?: number;
+  upvotes?: number;
+  photoUri?: string | null;
+  photos?: GeoTaggedPhoto[];
+  geoTag?: GeoTagMetadata;
+}
+
+export interface NearbyService {
+  id: string;
+  name: string;
+  category: ServiceCategory;
+  type?: ServiceCategory;
+  distance: string;
+  status?: string;
+  address?: string;
+  coordinates?: Coordinates;
+  phone?: string;
+}
+
+export interface SavedPlace {
+  id: string;
+  title: string;
+  subtitle: string;
+  address: string;
+  type: 'home' | 'work' | 'favorite';
+  destination: DestinationItem;
+}
+
+export interface GeoTagMetadata {
+  latitude: number;
+  longitude: number;
+  accuracyMeters?: number;
+  altitudeMeters?: number;
+  timestamp: string;
+  addressLabel: string;
+}
+
+export interface GeoTaggedPhoto {
+  id: string;
+  uri: string;
+  geoTag: GeoTagMetadata;
+}
+
+export interface Report {
+  id: string;
+  incidentType: IncidentType;
+  title: string;
+  description: string;
+  photoUri: string | null;
+  photos?: GeoTaggedPhoto[];
+  latitude: number;
+  longitude: number;
+  locationLabel: string;
+  createdAt: string;
+  status: VerificationStatus;
+  reliability: ReliabilityConfidence;
+  supportingReports: number;
+  geoTag?: GeoTagMetadata;
+  reporterRank?: number;
+  isThresholdCapped?: boolean;
+  coinsAwarded?: number;
+}
+
+export interface NavigationInstruction {
+  distance: string;
+  instruction: string;
+  turnType: 'straight' | 'right' | 'left' | 'slight_right' | 'slight_left' | 'u_turn';
+  roadName: string;
+}
+
+export interface MapLayersState {
+  incidents: boolean;
+  hospitals: boolean;
+  police: boolean;
+  fuel: boolean;
+  cng: boolean;
+  garages: boolean;
+}
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  phone: string;
+  avatarUri: string;
+  vehicleType: 'car' | 'suv' | 'bike' | 'walk';
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  bloodGroup: string;
+  bio: string;
+  trustScore: number;
+  hazardAlerts: boolean;
+  slowdownSensors: boolean;
+  voiceGuidance: boolean;
+}
+
+// ==========================================
+// WAYSURE SAFETY REWARDS & COIN SYSTEM TYPES
+// ==========================================
+
+export type IncidentSeverityLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export interface ContributionScoreBreakdown {
+  orderRank: number; // 1, 2, 3, 4, 5 (Rank > 5 gets 0 order points to prevent duplicate farming)
+  orderPoints: number; // 50 (1st), 35 (2nd), 25 (3rd), 15 (4th), 10 (5th), 0 (6th+)
+  isFarmingCapped?: boolean; // True if submitted after the first 5 valid reporters
+  maxReportersEligible?: number; // 5
+  hasDescription: boolean;
+  descriptionPoints: number; // +5
+  hasPhoto: boolean;
+  photoPoints: number; // +10
+  hasVideo: boolean;
+  videoPoints: number; // +15
+  evidenceTotalPoints: number; // capped at 25 max
+  gpsAccuracyMeters?: number;
+  gpsQuality: 'high' | 'medium' | 'poor';
+  gpsPoints: number; // +15 (<10m), +10 (10-30m), +0 (>30m)
+  totalScore: number; // orderPoints + evidenceTotalPoints + gpsPoints
+}
+
+export interface RiderDistributionDetail {
+  riderId: string;
+  riderName: string;
+  isCurrentUser: boolean;
+  orderRank: number;
+  orderPoints: number;
+  evidencePoints: number;
+  gpsPoints: number;
+  totalScore: number;
+  finalCoins: number;
+}
+
+export interface IncidentRewardPool {
+  id: string;
+  incidentTitle: string;
+  locationLabel: string;
+  severity: IncidentSeverityLevel;
+  totalPoolCoins: number; // LOW: 50, MED: 100, HIGH: 200, CRITICAL: 300
+  totalContributionScore: number;
+  riders: RiderDistributionDetail[];
+  status:
+    | 'pending_verification'
+    | 'verified_distributed'
+    | 'rejected_spam'
+    | 'threshold_cap_reached';
+  verifiedAt?: string;
+}
+
+export interface CoinTransaction {
+  id: string;
+  type: 'earned_report' | 'redeemed_voucher' | 'daily_bonus' | 'tier_bonus';
+  amount: number;
+  title: string;
+  subtitle: string;
+  timestamp: string;
+  severity?: IncidentSeverityLevel;
+  breakdown?: ContributionScoreBreakdown;
+  voucherCode?: string;
+}
+
+export interface RewardCatalogItem {
+  id: string;
+  title: string;
+  brand: string;
+  category: 'gear' | 'fuel' | 'maintenance' | 'toll' | 'voucher';
+  coinCost: number;
+  discountText: string;
+  description: string;
+  badge: string;
+  iconName: string;
+  accentColor: string;
+  stockStatus: 'In Stock' | 'Limited Stock' | 'Popular';
+  expiryDays: number;
+}
+
+export interface RedeemedVoucher {
+  id: string;
+  rewardId: string;
+  title: string;
+  brand: string;
+  discountText: string;
+  code: string;
+  redeemedAt: string;
+  expiresAt: string;
+  coinSpent: number;
+  isUsed: boolean;
+  category: string;
+}
+
+export interface UserRewardTier {
+  name: string;
+  level: number;
+  badgeIcon: string;
+  minCoins: number;
+  maxCoins: number;
+  multiplierText: string;
+  color: string;
+  perks: string[];
+}
+
+// ==========================================
+// ADVANCED ROAD SAFETY & ROUTE INTELLIGENCE
+// ==========================================
+
+export interface SpeedDropEvent {
+  id: string;
+  previousSpeedKmh: number;
+  currentSpeedKmh: number;
+  deltaKmh: number;
+  timestamp: number;
+  coordinates: Coordinates;
+  roadName?: string;
+  status: 'detected' | 'user_responded' | 'dismissed';
+  userResponse?: 'traffic' | 'blockage' | 'accident' | 'normal_stop';
+}
+
+export type CorridorServiceCategory =
+  | 'petrol'
+  | 'cng'
+  | 'diesel'
+  | 'garage'
+  | 'hospital'
+  | 'police';
+
+export interface RouteCorridorService {
+  id: string;
+  name: string;
+  category: CorridorServiceCategory;
+  distanceFromStartKm: number;
+  distanceFromRouteMeters: number;
+  address: string;
+  coordinates: Coordinates;
+  phone?: string;
+  operatingHours: string;
+  rating: number;
+  isOpen: boolean;
+  fuelTypes?: string[];
+  iconName: string;
+  color: string;
+}
+
+export interface HistoricalRiskAdvisory {
+  id: string;
+  routeId: string;
+  riskType: 'monsoon_flooding' | 'winter_fog' | 'landslide_ghat' | 'high_accident_zone' | 'waterlogging';
+  title: string;
+  riskLevel: 'Moderate' | 'High' | 'Severe';
+  warningText: string;
+  seasonalPeriod: string;
+  historicalIncidentCount: number;
+  affectedSegment: string;
+  alternativeRouteSuggestion: {
+    alternativeRouteId: string;
+    title: string;
+    extraDuration: string;
+    safetyBenefit: string;
+  };
+}
+
+export interface LongRouteSafetyState {
+  isActive: boolean;
+  stationaryDurationMinutes: number;
+  lastStationaryLocation?: Coordinates;
+  isPlannedHalt: boolean;
+  plannedHaltReason?: string;
+  plannedHaltExpiresAt?: number;
+  checkInStage:
+    | 'idle'
+    | 'stage1_inquiry'
+    | 'stage2_second_checkin'
+    | 'stage3_emergency_contact'
+    | 'stage4_assistance';
+  checkInCountdownSeconds: number;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+}
+
