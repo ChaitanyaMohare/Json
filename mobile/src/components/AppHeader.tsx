@@ -28,6 +28,21 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         <Feather name="menu" size={24} color={colors.textPrimary} />
       </TouchableOpacity>
 
+      {/* Center Brand Logo */}
+      <View style={styles.brandCenter}>
+        <Image
+          source={require('../../assets/waysure_logo.png')}
+          style={styles.brandLogo}
+          resizeMode="contain"
+        />
+        <View style={styles.brandTextCol}>
+          <Text style={styles.brandTitle}>
+            <Text style={{ color: '#0F172A' }}>Way</Text>
+            <Text style={{ color: '#DC2626' }}>Sure</Text>
+          </Text>
+        </View>
+      </View>
+
       {/* Center/Right Coin Balance Pill */}
       <View style={styles.rightGroup}>
         {onRewardsPress && (
@@ -76,6 +91,24 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  brandCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  brandLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  brandTextCol: {
+    flexDirection: 'column',
+  },
+  brandTitle: {
+    fontSize: 17,
+    fontWeight: '900',
+    letterSpacing: -0.3,
   },
   rightGroup: {
     flexDirection: 'row',

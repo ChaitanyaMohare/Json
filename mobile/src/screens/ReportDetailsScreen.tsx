@@ -9,16 +9,15 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { PhotoPicker } from '../components/PhotoPicker';
 import { PrimaryButton } from '../components/PrimaryButton';
-import { IncidentType, GeoTagMetadata } from '../types';
+import { IncidentType, GeoTagMetadata, GeoTaggedPhoto } from '../types';
 import { useApp } from '../context/AppContext';
-import { Ionicons } from '@expo/vector-icons';
 
 interface ReportDetailsScreenProps {
   incidentType: IncidentType;
@@ -31,9 +30,8 @@ export const ReportDetailsScreen: React.FC<ReportDetailsScreenProps> = ({
   onBack,
   onSubmitSuccess,
 }) => {
-  const { currentLocation, locationLabel, submitNewReport } = useApp();
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [geoTag, setGeoTag] = useState<GeoTagMetadata | null>(null);
+  const { currentLocation, locationLabel, submitNewReport, getIncidentReportThresholdInfo } = useApp();
+  const [photos, setPhotos] = useState<GeoTaggedPhoto[]>([]);
   const [description, setDescription] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -55,22 +53,45 @@ export const ReportDetailsScreen: React.FC<ReportDetailsScreenProps> = ({
     }
   };
 
+  const primaryGeoTag: GeoTagMetadata | null =
+    photos.length > 0 ? photos[0].geoTag : null;
+
+  const targetCoords = {
+    latitude: primaryGeoTag?.latitude || currentLocation.latitude,
+    longitude: primaryGeoTag?.longitude || currentLocation.longitude,
+  };
+
+  const thresholdInfo = getIncidentReportThresholdInfo(incidentType, targetCoords);
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    const targetLat = geoTag?.latitude || currentLocation.latitude;
-    const targetLng = geoTag?.longitude || currentLocation.longitude;
-    const targetLabel = geoTag?.addressLabel || locationLabel || 'Reported Location';
+    const targetLabel = primaryGeoTag?.addressLabel || locationLabel || 'Reported Location';
 
-    await submitNewReport(
+    const submitted = await submitNewReport(
       incidentType,
       description,
-      photoUri,
+      photos.length > 0 ? photos[0].uri : null,
       targetLabel,
-      { latitude: targetLat, longitude: targetLng },
-      geoTag
+      targetCoords,
+      primaryGeoTag,
+      photos
     );
+
     setIsSubmitting(false);
-    onSubmitSuccess();
+
+    if (submitted.isThresholdCapped) {
+      Alert.alert(
+        'Hazard Report Registered',
+        `Thank you! This hazard already has ${thresholdInfo.thresholdCap} verified reports (Max Reward Threshold Cap Reached). Your report helps corroborate current road status, but no Safety Coins are awarded to prevent farming.`,
+        [{ text: 'OK', onPress: onSubmitSuccess }]
+      );
+    } else {
+      Alert.alert(
+        'Safety Report Submitted! 🪙',
+        `Awesome! You are Reporter #${submitted.reporterRank || 1} of 5 for this hazard. +${submitted.coinsAwarded || 50} Waysure Safety Coins have been credited to your rewards account!`,
+        [{ text: 'View Rewards', onPress: onSubmitSuccess }]
+      );
+    }
   };
 
   return (
@@ -80,7 +101,7 @@ export const ReportDetailsScreen: React.FC<ReportDetailsScreenProps> = ({
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Top Header matching Screen 8: back button and title */}
+        {/* Top Header */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={onBack}
@@ -98,21 +119,80 @@ export const ReportDetailsScreen: React.FC<ReportDetailsScreenProps> = ({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Photo Attachment Container with Live Geo-Tagging */}
+          {/* Multiple Geo-Tagged Camera Photos (No Gallery) */}
           <PhotoPicker
-            photoUri={photoUri}
-            geoTag={geoTag}
-            onPhotoSelected={(uri, tag) => {
-              setPhotoUri(uri);
-              setGeoTag(tag || null);
-            }}
+            photos={photos}
+            onPhotosChange={setPhotos}
+            maxPhotos={5}
           />
 
-          {/* Description Input Card with 200 Char Limit matching Screen 8 */}
+          {/* REPORT REWARD THRESHOLD & ANTI-FARMING STATUS CARD */}
+          <View
+            style={[
+              styles.thresholdCard,
+              thresholdInfo.isThresholdCapped && styles.thresholdCardCapped,
+            ]}
+          >
+            <View style={styles.thresholdHeaderRow}>
+              <View style={styles.thresholdIconBox}>
+                <Ionicons
+                  name={thresholdInfo.isThresholdCapped ? 'alert-circle' : 'gift'}
+                  size={18}
+                  color={thresholdInfo.isThresholdCapped ? '#D97706' : '#2563EB'}
+                />
+              </View>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.thresholdTitle}>
+                  {thresholdInfo.isThresholdCapped
+                    ? 'Report Threshold Cap Reached (5/5)'
+                    : `Reporter Rank #${thresholdInfo.projectedRank} of 5 Eligible`}
+                </Text>
+                <Text style={styles.thresholdSub}>
+                  {thresholdInfo.isThresholdCapped
+                    ? 'Anti-farming rule: Only first 5 valid reporters receive Safety Coins.'
+                    : `Eligible for ~${thresholdInfo.estimatedCoins} Waysure Safety Coins upon verification!`}
+                </Text>
+              </View>
+              {!thresholdInfo.isThresholdCapped && (
+                <View style={styles.coinsBadge}>
+                  <Text style={styles.coinsBadgeText}>+{thresholdInfo.estimatedCoins} 🪙</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Visual 5-Reporter Progress Bar */}
+            <View style={styles.thresholdProgressBar}>
+              {[1, 2, 3, 4, 5].map((rank) => {
+                const isFilled = rank <= thresholdInfo.existingCount;
+                const isCurrent = rank === thresholdInfo.projectedRank;
+                return (
+                  <View
+                    key={rank}
+                    style={[
+                      styles.thresholdProgressStep,
+                      isFilled && styles.thresholdStepFilled,
+                      isCurrent && styles.thresholdStepCurrent,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.thresholdStepText,
+                        (isFilled || isCurrent) && styles.thresholdStepTextActive,
+                      ]}
+                    >
+                      #{rank}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Description Input Card with 200 Char Limit */}
           <View style={styles.descriptionCard}>
             <TextInput
               style={styles.textInput}
-              placeholder="Add a short description (optional)"
+              placeholder="Add a short description of the road hazard..."
               placeholderTextColor={colors.textMuted}
               multiline
               maxLength={200}
@@ -123,46 +203,46 @@ export const ReportDetailsScreen: React.FC<ReportDetailsScreenProps> = ({
           </View>
 
           {/* Precision Geo-Tagged Location Card */}
-          <View style={[styles.locationCard, geoTag && styles.locationCardGeoTagged]}>
+          <View style={[styles.locationCard, primaryGeoTag && styles.locationCardGeoTagged]}>
             <View style={styles.locationHeaderRow}>
-              <View style={[styles.locationPinBox, geoTag && styles.locationPinBoxGeoTagged]}>
+              <View style={[styles.locationPinBox, primaryGeoTag && styles.locationPinBoxGeoTagged]}>
                 <Feather
-                  name={geoTag ? 'crosshair' : 'map-pin'}
+                  name={primaryGeoTag ? 'crosshair' : 'map-pin'}
                   size={18}
-                  color={geoTag ? '#FFFFFF' : colors.textPrimary}
+                  color={primaryGeoTag ? '#FFFFFF' : colors.textPrimary}
                 />
               </View>
               <View style={styles.locationInfo}>
                 <View style={styles.locationTitleRow}>
                   <Text style={styles.locationTitle}>
-                    {geoTag ? 'Geo-Tagged Photo Location' : 'Location (auto-detected)'}
+                    {primaryGeoTag ? 'Geo-Tagged Photo Location' : 'Location (auto-detected)'}
                   </Text>
-                  {geoTag && (
+                  {primaryGeoTag && (
                     <View style={styles.precisionPill}>
-                      <Text style={styles.precisionPillText}>±{geoTag.accuracyMeters || 3}m</Text>
+                      <Text style={styles.precisionPillText}>±{primaryGeoTag.accuracyMeters || 3}m</Text>
                     </View>
                   )}
                 </View>
                 <Text style={styles.locationSubtitle} numberOfLines={2}>
-                  {geoTag?.addressLabel || locationLabel || 'Live Location'}
+                  {primaryGeoTag?.addressLabel || locationLabel || 'Live Location'}
                 </Text>
               </View>
             </View>
 
             {/* Coordinates Readout & Confidence Verification */}
-            {geoTag ? (
+            {primaryGeoTag ? (
               <View style={styles.geoTagTelemetryBox}>
                 <View style={styles.telemetryItem}>
                   <Text style={styles.telemetryLabel}>GPS Coordinates</Text>
                   <Text style={styles.telemetryValue}>
-                    {geoTag.latitude}° N, {geoTag.longitude}° E
+                    {primaryGeoTag.latitude}° N, {primaryGeoTag.longitude}° E
                   </Text>
                 </View>
                 <View style={styles.telemetryItem}>
                   <Text style={styles.telemetryLabel}>Confidence</Text>
                   <View style={styles.confidenceRow}>
                     <Ionicons name="shield-checkmark" size={14} color="#15803D" />
-                    <Text style={styles.confidenceText}>High Confidence</Text>
+                    <Text style={styles.confidenceText}>Live Geotagged</Text>
                   </View>
                 </View>
               </View>
@@ -170,10 +250,16 @@ export const ReportDetailsScreen: React.FC<ReportDetailsScreenProps> = ({
           </View>
         </ScrollView>
 
-        {/* Bottom CTA: Submit Report matching Screen 8 */}
+        {/* Bottom CTA: Submit Report */}
         <View style={styles.bottomBar}>
           <PrimaryButton
-            title={isSubmitting ? 'Submitting...' : 'Submit Report'}
+            title={
+              isSubmitting
+                ? 'Submitting...'
+                : thresholdInfo.isThresholdCapped
+                ? 'Submit Hazard Update (0 Coins)'
+                : `Submit Report (+${thresholdInfo.estimatedCoins} Coins)`
+            }
             onPress={handleSubmit}
             disabled={isSubmitting}
           />
@@ -213,28 +299,105 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 20,
   },
+  thresholdCard: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#BFDBFE',
+    marginBottom: 16,
+  },
+  thresholdCardCapped: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+  },
+  thresholdHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  thresholdIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thresholdTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  thresholdSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+    lineHeight: 14,
+  },
+  coinsBadge: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  coinsBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  thresholdProgressBar: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 12,
+  },
+  thresholdProgressStep: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  thresholdStepFilled: {
+    backgroundColor: '#10B981',
+    borderColor: '#059669',
+  },
+  thresholdStepCurrent: {
+    backgroundColor: '#2563EB',
+    borderColor: '#1D4ED8',
+  },
+  thresholdStepText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  thresholdStepTextActive: {
+    color: '#FFFFFF',
+  },
   descriptionCard: {
     backgroundColor: '#F8F9FA',
-    borderRadius: 20,
-    padding: 16,
-    minHeight: 120,
+    borderRadius: 18,
+    padding: 14,
+    minHeight: 100,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 20,
+    marginBottom: 16,
     justifyContent: 'space-between',
   },
   textInput: {
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textPrimary,
-    lineHeight: 22,
+    lineHeight: 20,
     textAlignVertical: 'top',
-    minHeight: 70,
+    minHeight: 60,
   },
   charCount: {
     alignSelf: 'flex-end',
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textMuted,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   locationCard: {
     backgroundColor: '#F8FAFC',

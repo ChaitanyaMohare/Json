@@ -31,7 +31,14 @@ interface ProfileScreenProps {
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenRewards }) => {
-  const { userProfile, updateUserProfile, safetyCoins, userRewardTier } = useApp();
+  const {
+    userProfile,
+    updateUserProfile,
+    safetyCoins,
+    userRewardTier,
+    logoutUser,
+    authEmail,
+  } = useApp();
 
   // Local form state
   const [name, setName] = useState(userProfile.name);
@@ -408,10 +415,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenRewa
 
             <View style={styles.vehicleGrid}>
               {[
-                { type: 'car' as const, label: 'Car', icon: 'car-side', emoji: '🚗' },
-                { type: 'suv' as const, label: 'SUV', icon: 'car-estate', emoji: '🚙' },
-                { type: 'bike' as const, label: 'Bike', icon: 'motorbike', emoji: '🏍️' },
-                { type: 'walk' as const, label: 'Walk', icon: 'walk', emoji: '🚶' },
+                { type: 'car' as const, label: 'Car', icon: 'car-side' },
+                { type: 'suv' as const, label: 'SUV', icon: 'car-estate' },
+                { type: 'bike' as const, label: 'Bike', icon: 'motorbike' },
+                { type: 'walk' as const, label: 'Walk', icon: 'walk' },
               ].map((v) => {
                 const isSelected = vehicleType === v.type;
                 return (
@@ -424,7 +431,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenRewa
                       isSelected && styles.vehiclePillSelected,
                     ]}
                   >
-                    <Text style={styles.vehicleEmoji}>{v.emoji}</Text>
+                    <MaterialCommunityIcons
+                      name={v.icon as any}
+                      size={22}
+                      color={isSelected ? '#2563EB' : '#64748B'}
+                      style={{ marginBottom: 4 }}
+                    />
                     <Text
                       style={[
                         styles.vehiclePillLabel,
@@ -609,6 +621,31 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onOpenRewa
               style={styles.resetBtn}
             >
               <Text style={styles.resetBtnText}>Reset to Default</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={async () => {
+                Alert.alert(
+                  'Sign Out of WaySure',
+                  'Are you sure you want to sign out? You will need your email 2FA code to log back in.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Sign Out',
+                      style: 'destructive',
+                      onPress: async () => {
+                        await logoutUser();
+                        if (onBack) onBack();
+                      },
+                    },
+                  ]
+                );
+              }}
+              style={styles.signOutBtn}
+            >
+              <Feather name="log-out" size={16} color="#DC2626" />
+              <Text style={styles.signOutBtnText}>Sign Out ({authEmail || userProfile.email || '2FA'})</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -1165,5 +1202,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+    paddingVertical: 13,
+    borderRadius: 14,
+    marginTop: 10,
+  },
+  signOutBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#DC2626',
   },
 });

@@ -64,8 +64,11 @@ export const mockSavedPlaces: SavedPlace[] = [];
 // Clean Incidents (Starts empty - no default fake accidents/hazards)
 export const mockIncidents: Incident[] = [];
 
-// Clean Nearby Services (Starts empty - real-time services fetched near user)
-export const mockNearbyServices: NearbyService[] = [];
+import { NearbyServicesService } from '../services/nearbyServicesService';
+
+// Comprehensive Nearby Services (Petrol pumps, CNG, 24x7 garages, Hospitals, Police)
+export const mockNearbyServices: NearbyService[] =
+  NearbyServicesService.getNearbyServices(DEFAULT_COORDS);
 
 export const mockRoutes: RouteOption[] = [
   {

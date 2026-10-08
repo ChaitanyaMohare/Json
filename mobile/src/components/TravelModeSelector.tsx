@@ -14,10 +14,12 @@ export const TravelModeSelector: React.FC<TravelModeSelectorProps> = ({
 }) => {
   const modes: {
     key: TravelMode;
+    label: string;
     icon: (selected: boolean) => React.ReactNode;
   }[] = [
     {
       key: 'car',
+      label: 'Car',
       icon: (selected) => (
         <Ionicons
           name="car"
@@ -28,6 +30,7 @@ export const TravelModeSelector: React.FC<TravelModeSelectorProps> = ({
     },
     {
       key: 'bike',
+      label: 'Bike',
       icon: (selected) => (
         <MaterialCommunityIcons
           name="motorbike"
@@ -37,26 +40,14 @@ export const TravelModeSelector: React.FC<TravelModeSelectorProps> = ({
       ),
     },
     {
-      key: 'transit',
+      key: 'walk',
+      label: 'Walk',
       icon: (selected) => (
         <Ionicons
-          name="bus"
+          name="walk"
           size={20}
           color={selected ? '#FFFFFF' : colors.textPrimary}
         />
-      ),
-    },
-    {
-      key: 'walk',
-      icon: (selected) => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-          <Ionicons
-            name="walk"
-            size={16}
-            color={selected ? '#FFFFFF' : colors.textPrimary}
-          />
-          <Text style={{ fontSize: 13 }}>🚶</Text>
-        </View>
       ),
     },
   ];

@@ -66,17 +66,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             },
           ]}
         >
-          {/* Approved Logo */}
+          {/* Official WaySure Logo */}
           <View style={styles.logoWrapper}>
-            <WaysureLogo size={74} />
+            <WaysureLogo size={120} />
           </View>
 
-          {/* Large Title: "WaySure" exactly as in reference */}
-          <Text style={styles.title}>WaySure</Text>
-
-          {/* Tagline in 2 lines */}
+          {/* Tagline */}
           <Text style={styles.tagline}>
-            Know the road.{'\n'}Trust your way.
+            Safer journeys for everyone.{'\n'}Live road intelligence & hazard protection.
           </Text>
         </Animated.View>
       </ImageBackground>

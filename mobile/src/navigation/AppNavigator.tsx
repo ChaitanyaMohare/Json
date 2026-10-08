@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SplashScreen } from '../screens/SplashScreen';
+import { LoginScreen } from '../screens/LoginScreen';
 import { DestinationScreen } from '../screens/DestinationScreen';
 import { RouteOptionsScreen } from '../screens/RouteOptionsScreen';
 import { NavigationScreen } from '../screens/NavigationScreen';
@@ -26,6 +27,7 @@ import { DestinationItem, RouteOption, IncidentType } from '../types';
 
 type ScreenFlow =
   | 'splash'
+  | 'login'
   | 'destination'
   | 'route_options'
   | 'navigation'
@@ -43,6 +45,7 @@ export const AppNavigator: React.FC = () => {
     useState<IncidentType>('accident');
 
   const {
+    isAuthenticated,
     selectedDestination,
     setSelectedDestination,
     selectedRoute,
@@ -58,7 +61,25 @@ export const AppNavigator: React.FC = () => {
   // Screen 1: Splash Screen
   if (currentScreen === 'splash') {
     return (
-      <SplashScreen onFinish={() => setCurrentScreen('destination')} />
+      <SplashScreen
+        onFinish={() => {
+          if (isAuthenticated) {
+            setCurrentScreen('destination');
+          } else {
+            setCurrentScreen('login');
+          }
+        }}
+      />
+    );
+  }
+
+  // Screen 2: Login Screen with Two-Factor Authentication (2FA) by Email
+  if (currentScreen === 'login') {
+    return (
+      <LoginScreen
+        onLoginSuccess={() => setCurrentScreen('destination')}
+        onSkip={() => setCurrentScreen('destination')}
+      />
     );
   }
 
@@ -174,7 +195,7 @@ export const AppNavigator: React.FC = () => {
     );
   }
 
-  // Screen: RouteGuard Safety Coin Rewards & Store
+  // Screen: Waysure Safety Rewards & Store
   if (currentScreen === 'rewards') {
     return (
       <View style={styles.fullContainer}>

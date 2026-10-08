@@ -16,6 +16,7 @@ interface MapboxMapProps {
   currentSpeed?: number;
   destination?: { latitude?: number; longitude?: number; name?: string };
   selectedRoute?: RouteOption;
+  availableRoutes?: RouteOption[];
   showAlternativeRoutes?: boolean;
   alternativeRouteType?: 'safer' | 'current' | 'alternate';
   incidents?: Incident[];
@@ -33,6 +34,10 @@ interface MapboxMapProps {
   vehicleType?: VehicleIconType;
   recenterTrigger?: number;
   restartTrigger?: number;
+  driverMode?: boolean;
+  driverAutoZoom?: boolean;
+  navigationMuted?: boolean;
+  onUserPanned?: () => void;
   onNavigationProgress?: (data: NavigationProgressData) => void;
   onArrived?: () => void;
 }
@@ -43,6 +48,7 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
   currentSpeed = 0,
   destination,
   selectedRoute,
+  availableRoutes = [],
   showAlternativeRoutes = false,
   incidents = [],
   services = [],
@@ -65,13 +71,21 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
   vehicleType = 'car',
   recenterTrigger = 0,
   restartTrigger = 0,
+  driverMode = true,
+  driverAutoZoom = true,
+  navigationMuted = false,
+  onUserPanned,
   onNavigationProgress,
   onArrived,
 }) => {
   const activeDestLabel = destinationLabel || destination?.name || 'Destination';
 
-  // Real route coordinates from DirectionsService
+  // Real primary route coordinates from DirectionsService
   const routeCoords = selectedRoute?.coordinates || [];
+
+  // Automatically find distinct alternative route (Recommended vs Fastest) to display simultaneously on map
+  const altRoute = availableRoutes.find((r) => r.id !== selectedRoute?.id) || null;
+  const altRouteCoords = showAlternativeRoutes ? altRoute?.coordinates || [] : [];
 
   return (
     <View style={styles.container}>
@@ -82,6 +96,7 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
         currentSpeed={currentSpeed}
         destination={destination}
         routeCoordinates={routeCoords}
+        alternativeRouteCoordinates={altRouteCoords}
         incidents={incidents}
         services={services}
         corridorServices={corridorServices}
@@ -94,6 +109,10 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
         vehicleType={vehicleType}
         recenterTrigger={recenterTrigger}
         restartTrigger={restartTrigger}
+        driverMode={driverMode}
+        driverAutoZoom={driverAutoZoom}
+        navigationMuted={navigationMuted}
+        onUserPanned={onUserPanned}
         onNavigationProgress={onNavigationProgress}
         onArrived={onArrived}
         onSelectIncident={onSelectIncident}

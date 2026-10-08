@@ -26,16 +26,23 @@ export const RouteCard: React.FC<RouteCardProps> = ({
         </View>
       );
     }
+    const modeIconName =
+      route.travelMode === 'walk'
+        ? 'walk'
+        : route.travelMode === 'bike'
+        ? 'bicycle'
+        : 'car';
+
     if (isFastest) {
       return (
         <View style={styles.grayIconPill}>
-          <Ionicons name="car" size={18} color={colors.textPrimary} />
+          <Ionicons name={modeIconName as any} size={18} color="#D97706" />
         </View>
       );
     }
     return (
       <View style={styles.grayIconPill}>
-        <Feather name="shield" size={18} color={colors.textPrimary} />
+        <Ionicons name={modeIconName as any} size={18} color={colors.textPrimary} />
       </View>
     );
   };
@@ -59,12 +66,14 @@ export const RouteCard: React.FC<RouteCardProps> = ({
           <Text style={styles.categoryTitle}>{route.name}</Text>
           {isFastest && (
             <View style={styles.badgeFastest}>
-              <Text style={styles.badgeFastestText}>⚡ FASTEST</Text>
+              <Ionicons name="flash" size={10} color="#2563EB" style={{ marginRight: 2 }} />
+              <Text style={styles.badgeFastestText}>FASTEST</Text>
             </View>
           )}
           {isRecommended && (
             <View style={styles.badgeRecommended}>
-              <Text style={styles.badgeRecommendedText}>⭐ BEST</Text>
+              <Ionicons name="star" size={10} color="#16A34A" style={{ marginRight: 2 }} />
+              <Text style={styles.badgeRecommendedText}>BEST</Text>
             </View>
           )}
         </View>

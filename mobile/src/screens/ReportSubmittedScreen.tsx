@@ -1,16 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   StatusBar,
   TouchableOpacity,
+  ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { GeoTaggedPhotoModal } from '../components/GeoTaggedPhotoModal';
 import { useApp } from '../context/AppContext';
+import { GeoTaggedPhoto } from '../types';
 
 interface ReportSubmittedScreenProps {
   onContinueNavigation: () => void;
@@ -23,7 +27,29 @@ export const ReportSubmittedScreen: React.FC<ReportSubmittedScreenProps> = ({
 }) => {
   const { safetyCoins, submittedReports } = useApp();
   const latestReport = submittedReports[0];
-  const orderRank = latestReport ? Math.min(5, (latestReport.supportingReports || 1)) : 1;
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+
+  const reportPhotos: GeoTaggedPhoto[] =
+    latestReport?.photos && latestReport.photos.length > 0
+      ? latestReport.photos
+      : latestReport?.photoUri
+      ? [
+          {
+            id: 'latest-1',
+            uri: latestReport.photoUri,
+            geoTag: latestReport.geoTag || {
+              latitude: latestReport.latitude,
+              longitude: latestReport.longitude,
+              accuracyMeters: 3,
+              timestamp: 'Just now',
+              addressLabel: latestReport.locationLabel,
+            },
+          },
+        ]
+      : [];
+
+  const orderRank = latestReport ? Math.min(5, latestReport.supportingReports || 1) : 1;
   const isCapped = orderRank > 5;
   const coinsAwarded = isCapped
     ? 0
@@ -41,8 +67,11 @@ export const ReportSubmittedScreen: React.FC<ReportSubmittedScreenProps> = ({
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Main Content */}
-      <View style={styles.content}>
+      {/* Main Scrollable Content */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Large Green Checkmark Badge */}
         <View style={styles.checkCircle}>
           <Ionicons name="checkmark" size={38} color="#FFFFFF" />
@@ -57,7 +86,48 @@ export const ReportSubmittedScreen: React.FC<ReportSubmittedScreenProps> = ({
           <Text style={styles.geoTagVerifiedText}>GPS Geo-Tagged & Verified Telemetry</Text>
         </View>
 
-        {/* REWARD ESTIMATION CARD matching RouteGuard Safety Coin System */}
+        {/* ATTACHED GEO-TAGGED PHOTOS EVIDENCE CARD */}
+        {reportPhotos.length > 0 && (
+          <View style={styles.photosCard}>
+            <View style={styles.photosCardHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="camera" size={16} color="#2563EB" />
+                <Text style={styles.photosCardTitle}>
+                  Attached Evidence ({reportPhotos.length} {reportPhotos.length === 1 ? 'Photo' : 'Photos'})
+                </Text>
+              </View>
+              <Text style={styles.tapToViewHint}>Tap to view full GPS HUD</Text>
+            </View>
+
+            {/* Photos Scroll Strip */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosStrip}>
+              {reportPhotos.map((photo, idx) => (
+                <TouchableOpacity
+                  key={photo.id || idx}
+                  onPress={() => {
+                    setActivePhotoIdx(idx);
+                    setPhotoModalVisible(true);
+                  }}
+                  activeOpacity={0.8}
+                  style={styles.photoThumbCard}
+                >
+                  <Image source={{ uri: photo.uri }} style={styles.photoThumbImg} />
+                  <View style={styles.photoIndexTag}>
+                    <Text style={styles.photoIndexTagText}>#{idx + 1}</Text>
+                  </View>
+                  <View style={styles.photoGpsTag}>
+                    <Ionicons name="location-sharp" size={10} color="#34D399" />
+                    <Text style={styles.photoGpsTagText}>
+                      {photo.geoTag ? `${photo.geoTag.latitude.toFixed(3)}°, ${photo.geoTag.longitude.toFixed(3)}°` : 'Geo-Tagged'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* REWARD ESTIMATION CARD matching Waysure Safety Rewards */}
         <View style={styles.rewardEstimateCard}>
           <View style={styles.rewardCardHeader}>
             <View style={styles.rewardIconBadge}>
@@ -88,7 +158,7 @@ export const ReportSubmittedScreen: React.FC<ReportSubmittedScreenProps> = ({
               </Text>
             </View>
             <View style={styles.breakdownChip}>
-              <Text style={styles.breakdownChipLabel}>Photo Evid: <Text style={{ fontWeight: '800' }}>+10p</Text></Text>
+              <Text style={styles.breakdownChipLabel}>Photo Evid: <Text style={{ fontWeight: '800' }}>+{reportPhotos.length > 0 ? '15p' : '0p'}</Text></Text>
             </View>
             <View style={styles.breakdownChip}>
               <Text style={styles.breakdownChipLabel}>GPS &lt;10m: <Text style={{ fontWeight: '800' }}>+15p</Text></Text>
@@ -113,7 +183,16 @@ export const ReportSubmittedScreen: React.FC<ReportSubmittedScreenProps> = ({
         <Text style={styles.message}>
           Thank you for protecting fellow riders on Waysure!
         </Text>
-      </View>
+      </ScrollView>
+
+      {/* Full-Screen Geo-Tagged Photo Viewer */}
+      <GeoTaggedPhotoModal
+        visible={photoModalVisible}
+        photos={reportPhotos}
+        initialIndex={activePhotoIdx}
+        onClose={() => setPhotoModalVisible(false)}
+        title={latestReport?.title || 'Geo-Tagged Evidence'}
+      />
 
       {/* Bottom CTAs */}
       <View style={styles.bottomBar}>
@@ -143,11 +222,85 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'space-between',
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 24,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
+  },
+  photosCard: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    marginBottom: 12,
+  },
+  photosCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  photosCardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  tapToViewHint: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  photosStrip: {
+    flexDirection: 'row',
+  },
+  photoThumbCard: {
+    width: 96,
+    height: 96,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginRight: 10,
+    backgroundColor: '#0F172A',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    position: 'relative',
+  },
+  photoThumbImg: {
+    width: '100%',
+    height: '100%',
+  },
+  photoIndexTag: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  photoIndexTagText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  photoGpsTag: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  photoGpsTagText: {
+    color: '#34D399',
+    fontSize: 8,
+    fontWeight: '700',
   },
   checkCircle: {
     width: 76,

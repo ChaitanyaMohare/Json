@@ -275,12 +275,26 @@ export class LocationService {
   public static async requestPermission(): Promise<boolean> {
     try {
       if (Platform.OS === 'web') {
-        if (typeof navigator !== 'undefined' && navigator.geolocation) {
-          return true;
+        return true;
+      }
+
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        return false;
+      }
+
+      if (Platform.OS === 'android') {
+        try {
+          const isEnabled = await Location.hasServicesEnabledAsync();
+          if (!isEnabled) {
+            await Location.enableNetworkProviderAsync().catch(() => {});
+          }
+        } catch {
+          // Ignore provider check error
         }
       }
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      return status === 'granted';
+
+      return true;
     } catch (error) {
       console.warn('Error requesting location permission:', error);
       return false;
@@ -338,7 +352,7 @@ export class LocationService {
   private static async getIpLocation(): Promise<Coordinates | null> {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
       const res = await fetch('https://freeipapi.com/api/json', {
         signal: controller.signal,
       });
@@ -372,17 +386,58 @@ export class LocationService {
   }
 
   public static async getCurrentLocation(): Promise<LocationResult> {
-    // 1. If we have a cached result from GPS, return it immediately to eliminate lag
-    if (this.cachedResult && this.cachedResult.granted) {
-      this.refreshLocationInBackground();
-      return this.cachedResult;
-    }
-
     try {
       const hasPermission = await this.requestPermission();
 
-      // 2. Try fast Last Known Position first for instant 0ms response
+      // 1. Try real GPS position directly with High accuracy
       if (hasPermission) {
+        try {
+          const accuracyLevel =
+            Platform.OS === 'android' || Platform.OS === 'ios'
+              ? Location.Accuracy.High
+              : Location.Accuracy.Balanced;
+
+          const positionPromise = Location.getCurrentPositionAsync({
+            accuracy: accuracyLevel,
+          });
+
+          const timeoutPromise = new Promise<null>((resolve) =>
+            setTimeout(() => resolve(null), 7000)
+          );
+
+          const position = await Promise.race([positionPromise, timeoutPromise]);
+
+          if (position && position.coords) {
+            const coordinates: Coordinates = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            };
+
+            const label = await this.reverseGeocode(coordinates);
+            const speedResult = AccurateSpeedEngine.processLocationFix(
+              position.coords.latitude,
+              position.coords.longitude,
+              position.timestamp || Date.now(),
+              position.coords.accuracy ?? 15,
+              position.coords.speed,
+              position.coords.heading
+            );
+
+            const result: LocationResult = {
+              granted: true,
+              coordinates,
+              label,
+              speedKmh: speedResult.speedKmh,
+              heading: speedResult.calculatedHeading ?? position.coords.heading ?? null,
+            };
+            this.cachedResult = result;
+            return result;
+          }
+        } catch (gpsErr) {
+          console.warn('GPS getCurrentPositionAsync error:', gpsErr);
+        }
+
+        // 2. Try Last Known Position if current position timed out or failed
         try {
           const lastKnown = await Location.getLastKnownPositionAsync({});
           if (lastKnown && lastKnown.coords) {
@@ -408,11 +463,10 @@ export class LocationService {
               heading: speedResult.calculatedHeading ?? lastKnown.coords.heading ?? null,
             };
             this.cachedResult = result;
-            this.refreshLocationInBackground();
             return result;
           }
         } catch {
-          // Last known not cached yet
+          // Last known not available
         }
       }
 
@@ -422,7 +476,7 @@ export class LocationService {
           navigator.geolocation.getCurrentPosition(
             (pos) => resolve(pos),
             () => resolve(null),
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
           );
         });
 
@@ -452,77 +506,30 @@ export class LocationService {
           return result;
         }
       }
-
-      // 4. Fetch real GPS position with high accuracy
-      if (hasPermission) {
-        const accuracyLevel =
-          Platform.OS === 'android' || Platform.OS === 'ios'
-            ? Location.Accuracy.BestForNavigation
-            : Location.Accuracy.High;
-
-        const positionPromise = Location.getCurrentPositionAsync({
-          accuracy: accuracyLevel,
-        });
-
-        const timeoutPromise = new Promise<null>((resolve) =>
-          setTimeout(() => resolve(null), 5000)
-        );
-
-        const position = await Promise.race([positionPromise, timeoutPromise]);
-
-        if (position && position.coords) {
-          const coordinates: Coordinates = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          };
-
-          const label = await this.reverseGeocode(coordinates);
-          const speedResult = AccurateSpeedEngine.processLocationFix(
-            position.coords.latitude,
-            position.coords.longitude,
-            position.timestamp || Date.now(),
-            position.coords.accuracy ?? 15,
-            position.coords.speed,
-            position.coords.heading
-          );
-
-          const result: LocationResult = {
-            granted: true,
-            coordinates,
-            label,
-            speedKmh: speedResult.speedKmh,
-            heading: speedResult.calculatedHeading ?? position.coords.heading ?? null,
-          };
-          this.cachedResult = result;
-          return result;
-        }
-      }
     } catch (error) {
       console.warn('GPS location request error:', error);
     }
 
-    // 5. Fallback via IP Geolocation
+    // 4. Fallback via IP Geolocation
     const ipCoords = await this.getIpLocation();
     if (ipCoords) {
       const label = await this.reverseGeocode(ipCoords);
-      const result: LocationResult = {
+      return {
         granted: true,
         coordinates: ipCoords,
         label,
         speedKmh: 0,
         heading: null,
       };
-      this.cachedResult = result;
-      return result;
     }
 
-    // 6. Final fallback: Clean default city label
+    // 5. Final fallback
     return {
       granted: false,
       coordinates: this.defaultLocation,
-      label: 'New Delhi',
+      label: 'Locating...',
       heading: null,
-      error: 'Location unavailable. Showing default central region.',
+      error: 'Location unavailable. Showing default region.',
     };
   }
 
@@ -602,17 +609,14 @@ export class LocationService {
         return;
       }
 
-      // Native Platform (Android / iOS): Use expo-location with continuous 1s delivery
-      const accuracySetting =
-        Platform.OS === 'android' || Platform.OS === 'ios'
-          ? Location.Accuracy.BestForNavigation
-          : Location.Accuracy.High;
+      // Native Platform (Android / iOS): Use expo-location with smooth 1.5s cadence & 2m threshold
+      const accuracySetting = Location.Accuracy.High;
 
       this.locationSubscription = await Location.watchPositionAsync(
         {
           accuracy: accuracySetting,
-          timeInterval: 1000,
-          distanceInterval: 0, // Continuous 1-second cadence so speedometer responds immediately even when halting
+          timeInterval: 1500,
+          distanceInterval: 2, // Filter out sub-2m GPS noise while stationary to eliminate map jitter
         },
         (loc) => {
           const speedResult = AccurateSpeedEngine.processLocationFix(

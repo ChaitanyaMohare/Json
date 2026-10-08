@@ -11,6 +11,7 @@ import {
   MapLayersState,
   UserProfile,
   GeoTagMetadata,
+  GeoTaggedPhoto,
   CoinTransaction,
   IncidentRewardPool,
   RedeemedVoucher,
@@ -40,8 +41,15 @@ const STORAGE_KEY_LIFETIME_COINS = '@waysure_lifetime_coins_v2';
 const STORAGE_KEY_COIN_TXS = '@waysure_coin_txs_v2';
 const STORAGE_KEY_POOLS = '@waysure_reward_pools_v2';
 const STORAGE_KEY_VOUCHERS = '@waysure_vouchers_v2';
+const STORAGE_KEY_AUTH = '@waysure_auth_v2';
 
 export interface AppContextType {
+  // Authentication & 2FA
+  isAuthenticated: boolean;
+  authEmail: string | null;
+  loginUser: (email: string) => Promise<void>;
+  logoutUser: () => Promise<void>;
+
   // Location
   currentLocation: Coordinates;
   currentHeading: number | null;
@@ -97,8 +105,19 @@ export interface AppContextType {
     photoUri: string | null,
     locationLabel: string,
     customCoords?: Coordinates,
-    geoTag?: GeoTagMetadata | null
+    geoTag?: GeoTagMetadata | null,
+    photos?: GeoTaggedPhoto[]
   ) => Promise<Report>;
+  getIncidentReportThresholdInfo: (
+    incidentType: IncidentType,
+    coords?: Coordinates
+  ) => {
+    existingCount: number;
+    thresholdCap: number;
+    projectedRank: number;
+    isThresholdCapped: boolean;
+    estimatedCoins: number;
+  };
 
   // Saved Places
   savedPlaces: SavedPlace[];
@@ -134,7 +153,7 @@ export interface AppContextType {
   userProfile: UserProfile;
   updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
 
-  // RouteGuard Safety Coin Reward System
+  // Waysure Safety Rewards & Coin System
   safetyCoins: number;
   lifetimeCoins: number;
   coinTransactions: CoinTransaction[];
@@ -208,6 +227,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const [powerSafetyMode, setPowerSafetyMode] = useState<boolean>(true);
 
+  // Authentication & Two-Factor Authentication
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
+
   // Map layers
   const [mapLayers, setMapLayers] = useState<MapLayersState>(defaultLayers);
 
@@ -235,7 +258,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [userProfile, setUserProfile] =
     useState<UserProfile>(DEFAULT_USER_PROFILE);
 
-  // RouteGuard Safety Coins State
+  // Waysure Safety Coins State
   const [safetyCoins, setSafetyCoins] = useState<number>(340);
   const [lifetimeCoins, setLifetimeCoins] = useState<number>(480);
   const [coinTransactions, setCoinTransactions] = useState<CoinTransaction[]>(
@@ -247,8 +270,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const userRewardTier = RewardService.getUserTier(lifetimeCoins);
 
-  // Init location, reports, profile, and rewards
+  // Init location, reports, profile, auth, and rewards
   useEffect(() => {
+    loadAuth();
     requestLocation();
     loadReports();
     loadSavedPlaces();
@@ -305,20 +329,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       if (locResult.label) {
         setLocationLabel(locResult.label);
       }
-      if (locResult.speedKmh) {
+      if (locResult.speedKmh !== undefined) {
         setCurrentSpeed(locResult.speedKmh);
       }
       if (locResult.heading !== undefined && locResult.heading !== null) {
         setCurrentHeading(locResult.heading);
       }
 
-      if (locResult.granted) {
-        LocationService.watchLocation((coords, speed, heading) => {
-          setCurrentLocation(coords);
-          if (speed !== undefined && speed >= 0) setCurrentSpeed(speed);
-          if (heading !== undefined && heading !== null) setCurrentHeading(heading);
-        });
-      }
+      // Always initiate continuous watching to stream real coordinates as device moves or GPS locks
+      LocationService.watchLocation((coords, speed, heading) => {
+        setLocationPermissionGranted(true);
+        setCurrentLocation(coords);
+        if (speed !== undefined && speed >= 0) setCurrentSpeed(speed);
+        if (heading !== undefined && heading !== null) setCurrentHeading(heading);
+      });
     } catch (e) {
       console.warn('Failed in requestLocation:', e);
     }
@@ -350,6 +374,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (e) {
       console.warn('Failed to load user profile:', e);
+    }
+  };
+
+  const loadAuth = async () => {
+    try {
+      const data = await AsyncStorage.getItem(STORAGE_KEY_AUTH);
+      if (data) {
+        const parsed = JSON.parse(data);
+        setIsAuthenticated(Boolean(parsed.isAuthenticated));
+        setAuthEmail(parsed.email || null);
+      } else {
+        // First-time users or default state
+        setIsAuthenticated(false);
+        setAuthEmail(null);
+      }
+    } catch {
+      setIsAuthenticated(false);
+    }
+  };
+
+  const loginUser = async (email: string) => {
+    try {
+      setIsAuthenticated(true);
+      setAuthEmail(email);
+      await AsyncStorage.setItem(
+        STORAGE_KEY_AUTH,
+        JSON.stringify({ isAuthenticated: true, email })
+      );
+      // Update profile email if available
+      setUserProfile((prev) => ({
+        ...prev,
+        email,
+      }));
+    } catch (e) {
+      console.warn('Failed saving auth:', e);
+    }
+  };
+
+  const logoutUser = async () => {
+    try {
+      setIsAuthenticated(false);
+      setAuthEmail(null);
+      await AsyncStorage.removeItem(STORAGE_KEY_AUTH);
+    } catch (e) {
+      console.warn('Failed logging out:', e);
     }
   };
 
@@ -407,13 +476,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }));
   };
 
+  const getIncidentReportThresholdInfo = (
+    incidentType: IncidentType,
+    coords?: Coordinates
+  ) => {
+    const checkLat = coords?.latitude || currentLocation.latitude;
+    const checkLng = coords?.longitude || currentLocation.longitude;
+    const thresholdCap = 5;
+
+    // Count existing reports for this incident in this geographic spot (~300m)
+    const existingSimilar = submittedReports.filter(
+      (r) =>
+        r.incidentType === incidentType &&
+        Math.abs(r.latitude - checkLat) < 0.003 &&
+        Math.abs(r.longitude - checkLng) < 0.003
+    );
+    const existingCount = existingSimilar.length;
+    const projectedRank = existingCount + 1;
+    const isThresholdCapped = projectedRank > thresholdCap;
+
+    let estimatedCoins = 0;
+    if (!isThresholdCapped) {
+      estimatedCoins =
+        projectedRank === 1
+          ? 75
+          : projectedRank === 2
+          ? 55
+          : projectedRank === 3
+          ? 40
+          : projectedRank === 4
+          ? 30
+          : 20;
+    }
+
+    return {
+      existingCount,
+      thresholdCap,
+      projectedRank,
+      isThresholdCapped,
+      estimatedCoins,
+    };
+  };
+
   const submitNewReport = async (
     incidentType: IncidentType,
     description: string,
     photoUri: string | null,
     locLabel: string,
     customCoords?: Coordinates,
-    geoTag?: GeoTagMetadata | null
+    geoTag?: GeoTagMetadata | null,
+    photos?: GeoTaggedPhoto[]
   ): Promise<Report> => {
     const title =
       incidentType === 'accident'
@@ -428,16 +540,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         ? 'Flooding'
         : 'Hazard Alert';
 
+    const firstPhoto = photos && photos.length > 0 ? photos[0] : null;
+    const effectivePhotoUri = photoUri || firstPhoto?.uri || null;
+    const effectiveGeoTag = geoTag || firstPhoto?.geoTag || null;
+
     const targetLat =
       customCoords?.latitude ||
-      geoTag?.latitude ||
+      effectiveGeoTag?.latitude ||
       currentLocation.latitude;
     const targetLng =
       customCoords?.longitude ||
-      geoTag?.longitude ||
+      effectiveGeoTag?.longitude ||
       currentLocation.longitude;
     const targetLabel =
-      locLabel || geoTag?.addressLabel || locationLabel || 'Live Location';
+      locLabel || effectiveGeoTag?.addressLabel || locationLabel || 'Live Location';
+
+    // Determine reporter rank and threshold status (1st to 5th earn reward points; 6th+ are capped by anti-farming protection)
+    const thresholdInfo = getIncidentReportThresholdInfo(incidentType, {
+      latitude: targetLat,
+      longitude: targetLng,
+    });
+    const orderRank = thresholdInfo.projectedRank;
+    const isThresholdCapped = thresholdInfo.isThresholdCapped;
+    const coinsEarned = thresholdInfo.estimatedCoins;
 
     const reportId = `rep-${Date.now()}`;
     const newReport: Report = {
@@ -445,33 +570,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       incidentType,
       title,
       description,
-      photoUri,
+      photoUri: effectivePhotoUri,
+      photos: photos || (effectivePhotoUri && effectiveGeoTag ? [{ id: `photo-${Date.now()}`, uri: effectivePhotoUri, geoTag: effectiveGeoTag }] : undefined),
       latitude: targetLat,
       longitude: targetLng,
       locationLabel: targetLabel,
       createdAt: 'Just now',
-      status: geoTag ? 'Confirmed' : 'Under Verification',
-      reliability: geoTag ? 'High Confidence' : 'Needs Verification',
-      supportingReports: geoTag ? 3 : 1,
-      geoTag: geoTag || undefined,
+      status: effectiveGeoTag ? 'Confirmed' : 'Under Verification',
+      reliability: effectiveGeoTag ? 'High Confidence' : 'Needs Verification',
+      supportingReports: Math.max(1, orderRank),
+      geoTag: effectiveGeoTag || undefined,
+      reporterRank: orderRank,
+      isThresholdCapped,
+      coinsAwarded: coinsEarned,
     };
-
-    // Determine reporter rank (1st to 5th earn reward points; 6th+ are capped by anti-farming protection)
-    const existingSimilarReports = submittedReports.filter(
-      (r) =>
-        r.incidentType === incidentType &&
-        Math.abs(r.latitude - targetLat) < 0.003 &&
-        Math.abs(r.longitude - targetLng) < 0.003
-    );
-    const orderRank = existingSimilarReports.length + 1;
 
     // Create a corresponding Incident Reward Pool entry
     const breakdown = RewardService.calculateContributionScore({
       orderRank,
       hasDescription: Boolean(description && description.trim().length > 0),
-      hasPhoto: Boolean(photoUri),
+      hasPhoto: Boolean(effectivePhotoUri || (photos && photos.length > 0)),
       hasVideo: false,
-      gpsAccuracyMeters: geoTag?.accuracyMeters || 8,
+      gpsAccuracyMeters: effectiveGeoTag?.accuracyMeters || 6,
     });
 
     const poolSeverity: IncidentSeverityLevel =
@@ -480,19 +600,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         : incidentType === 'road_blockage' || incidentType === 'road_damage'
         ? 'MEDIUM'
         : 'LOW';
-
-    const isEligible = orderRank <= RewardService.MAX_REPORTERS_ELIGIBLE_FOR_POINTS;
-    const coinsEarned = isEligible
-      ? orderRank === 1
-        ? 75
-        : orderRank === 2
-        ? 55
-        : orderRank === 3
-        ? 40
-        : orderRank === 4
-        ? 30
-        : 20
-      : 0;
 
     const distributed = RewardService.distributePoolCoins(poolSeverity, [
       {
@@ -515,18 +622,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       totalPoolCoins: distributed.reduce((s, r) => s + r.finalCoins, 0),
       totalContributionScore: breakdown.totalScore,
       riders: distributed,
-      status: 'pending_verification',
+      status: isThresholdCapped ? 'threshold_cap_reached' : 'pending_verification',
       verifiedAt: undefined,
     };
 
     const nextPools = [newPool, ...rewardPools];
 
-    // Immediately update user's safety reward account with earned points
+    // Immediately update user's safety reward account with earned points if not threshold capped
     let nextBalance = safetyCoins;
     let nextLifetime = lifetimeCoins;
     let nextTxs = coinTransactions;
 
-    if (isEligible && coinsEarned > 0) {
+    if (!isThresholdCapped && coinsEarned > 0) {
       nextBalance = safetyCoins + coinsEarned;
       nextLifetime = lifetimeCoins + coinsEarned;
       const newTx: CoinTransaction = {
@@ -534,7 +641,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         type: 'earned_report',
         amount: coinsEarned,
         title: `${title} Verified`,
-        subtitle: `Rank #${orderRank} Reporter (+${coinsEarned} Safety Coins credited)`,
+        subtitle: `Rank #${orderRank}/5 Reporter (+${coinsEarned} Safety Coins credited)`,
         timestamp: 'Just now',
         severity: poolSeverity,
         breakdown,
@@ -545,6 +652,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       setCoinTransactions(nextTxs);
     }
 
+    setSubmittedReports((prev) => [newReport, ...prev]);
+    ReportService.saveReport(newReport).catch((err) =>
+      console.warn('Failed saving report to storage:', err)
+    );
     setRewardPools(nextPools);
     saveRewardsToStorage(
       nextBalance,
@@ -777,6 +888,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <AppContext.Provider
       value={{
+        isAuthenticated,
+        authEmail,
+        loginUser,
+        logoutUser,
         currentLocation,
         currentHeading,
         locationLabel,
@@ -810,6 +925,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         toggleMapLayer,
         submittedReports,
         submitNewReport,
+        getIncidentReportThresholdInfo,
         savedPlaces,
         savePlace,
         sideMenuOpen,

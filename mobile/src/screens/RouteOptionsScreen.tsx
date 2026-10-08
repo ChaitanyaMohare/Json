@@ -69,12 +69,18 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
     availableRoutes
   );
 
-  // Fetch corridor services along this route
+  // Fetch corridor services distributed along this specific selected route
   const corridorServices = SafetyMonitoringService.getRouteCorridorServices(
     currentLocation,
     activeDest.coordinates || currentLocation,
-    serviceCategory
+    serviceCategory,
+    selectedRoute.type,
+    travelMode,
+    selectedRoute.coordinates
   );
+
+  // Fetch route-specific incidents and safety status for the selected route
+  const routeSpecificIncidents = SafetyMonitoringService.getRouteSpecificIncidents(selectedRoute.type);
 
   useEffect(() => {
     setCurrentOrigin(activeOriginLabel);
@@ -185,6 +191,8 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
         <View style={styles.mapPreviewContainer}>
           <MapboxMap
             selectedRoute={selectedRoute}
+            availableRoutes={availableRoutes}
+            showAlternativeRoutes={true}
             currentLocation={currentLocation}
             destination={{
               latitude: activeDest.coordinates?.latitude,
@@ -194,16 +202,74 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
             destinationLabel={activeDest.name}
             corridorServices={corridorServices}
             isNavigating={false}
+            vehicleType={travelMode === 'walk' ? 'walk' : travelMode === 'bike' ? 'bike' : 'car'}
           />
           {/* Floating Duration / Distance Status Pill */}
           <View style={styles.mapPreviewOverlay}>
             <View style={styles.mapPreviewPill}>
               <Ionicons name="navigate" size={13} color="#2563EB" />
               <Text style={styles.mapPreviewPillText}>
-                {selectedRoute?.duration || 'Route'} · {selectedRoute?.distance}
+                {selectedRoute?.duration || 'Route'} · {selectedRoute?.distance} ({selectedRoute?.name})
               </Text>
             </View>
           </View>
+        </View>
+
+        {/* FEATURE: ROUTE-SPECIFIC LIVE INCIDENTS & SAFETY STATUS */}
+        <View style={styles.routeIncidentsCard}>
+          <View style={styles.routeIncidentsHeader}>
+            <Ionicons
+              name={selectedRoute.type === 'fastest' ? 'speedometer' : 'shield-checkmark'}
+              size={18}
+              color={selectedRoute.type === 'fastest' ? '#D97706' : '#10B981'}
+            />
+            <Text style={styles.routeIncidentsTitle}>
+              {selectedRoute.name} Safety & Live Status
+            </Text>
+            <View
+              style={[
+                styles.trustBadge,
+                selectedRoute.type === 'recommended'
+                  ? { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }
+                  : { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.trustBadgeText,
+                  selectedRoute.type === 'recommended' ? { color: '#047857' } : { color: '#B45309' },
+                ]}
+              >
+                {selectedRoute.trustScore}% Trust
+              </Text>
+            </View>
+          </View>
+
+          {routeSpecificIncidents.map((inc, i) => (
+            <View key={i} style={styles.routeIncidentRow}>
+              <Ionicons
+                name={
+                  inc.type === 'verified_safe'
+                    ? 'checkmark-circle'
+                    : inc.type === 'heavy_traffic'
+                    ? 'car'
+                    : 'warning'
+                }
+                size={16}
+                color={
+                  inc.type === 'verified_safe'
+                    ? '#10B981'
+                    : inc.type === 'heavy_traffic'
+                    ? '#EA580C'
+                    : '#DC2626'
+                }
+              />
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={styles.routeIncidentTitleText}>{inc.title}</Text>
+                <Text style={styles.routeIncidentSubText}>{inc.note}</Text>
+              </View>
+            </View>
+          ))}
         </View>
 
         {/* FEATURE 4: HISTORICAL RISK PREDICTION ADVISORY */}
@@ -220,7 +286,10 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
                     <Text style={styles.riskLevelText}>{historicalRisk.riskLevel} Risk</Text>
                   </View>
                 </View>
-                <Text style={styles.riskPeriodText}>📅 {historicalRisk.seasonalPeriod}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <Feather name="calendar" size={12} color="#94A3B8" />
+                  <Text style={styles.riskPeriodText}>{historicalRisk.seasonalPeriod}</Text>
+                </View>
               </View>
             </View>
 
@@ -234,7 +303,10 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
             {/* Recommended Alternative Route Suggestion */}
             <View style={styles.altSuggestionBox}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.altSuggestionHeading}>💡 Suggested Alternative Route:</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                  <Ionicons name="bulb-outline" size={14} color="#2563EB" />
+                  <Text style={styles.altSuggestionHeading}>Suggested Alternative Route:</Text>
+                </View>
                 <Text style={styles.altSuggestionTitle}>
                   {historicalRisk.alternativeRouteSuggestion.title} ({historicalRisk.alternativeRouteSuggestion.extraDuration})
                 </Text>
@@ -297,11 +369,11 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
           >
             {[
               { key: 'all', label: 'All Services' },
-              { key: 'petrol', label: '⛽ Petrol Pumps' },
-              { key: 'cng', label: '⚡ CNG / Diesel' },
-              { key: 'garage', label: '🔧 Garages (24/7)' },
-              { key: 'hospital', label: '🏥 Hospitals' },
-              { key: 'police', label: '👮 Police Patrol' },
+              { key: 'petrol', label: 'Petrol Pumps' },
+              { key: 'cng', label: 'CNG / Diesel' },
+              { key: 'garage', label: 'Garages (24/7)' },
+              { key: 'hospital', label: 'Hospitals' },
+              { key: 'police', label: 'Police Patrol' },
             ].map((cat) => (
               <TouchableOpacity
                 key={cat.key}
@@ -344,11 +416,14 @@ export const RouteOptionsScreen: React.FC<RouteOptionsScreenProps> = ({
                     </View>
 
                     <Text style={styles.serviceItemDistText}>
-                      📍 {service.distanceFromStartKm} km along route ({service.distanceFromRouteMeters}m off highway)
+                      {service.distanceFromStartKm} km along route ({service.distanceFromRouteMeters}m off highway)
                     </Text>
 
                     <View style={styles.serviceTagsRow}>
-                      <Text style={styles.serviceHoursText}>🕒 {service.operatingHours}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                        <Ionicons name="time-outline" size={12} color="#64748B" />
+                        <Text style={styles.serviceHoursText}>{service.operatingHours}</Text>
+                      </View>
                       {service.fuelTypes && service.fuelTypes[0] && (
                         <View style={styles.serviceFuelTag}>
                           <Text style={styles.serviceFuelTagText}>{service.fuelTypes[0]}</Text>
@@ -875,6 +950,57 @@ const styles = StyleSheet.create({
   },
   toggleCheckboxActive: {
     backgroundColor: '#2563EB',
+  },
+  routeIncidentsCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  routeIncidentsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  routeIncidentsTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+    flex: 1,
+  },
+  trustBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  trustBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  routeIncidentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  routeIncidentTitleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  routeIncidentSubText: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+    lineHeight: 14,
   },
   bottomBar: {
     paddingHorizontal: 20,

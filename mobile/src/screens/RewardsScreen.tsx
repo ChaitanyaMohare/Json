@@ -149,7 +149,7 @@ export const RewardsScreen: React.FC<RewardsScreenProps> = ({ onBack }) => {
         </TouchableOpacity>
 
         <View style={styles.headerTitleGroup}>
-          <Text style={styles.headerTitle}>RouteGuard Safety Rewards</Text>
+          <Text style={styles.headerTitle}>Waysure Safety Rewards</Text>
           <Text style={styles.headerSubtitle}>Safety Contributions & Coin Pool</Text>
         </View>
 
@@ -306,7 +306,7 @@ export const RewardsScreen: React.FC<RewardsScreenProps> = ({ onBack }) => {
                 <Ionicons name="sparkles" size={20} color="#F59E0B" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.infoBannerTitle}>RouteGuard Safety Coin System</Text>
+                <Text style={styles.infoBannerTitle}>Waysure Safety Coin System</Text>
                 <Text style={styles.infoBannerSubtitle}>
                   Rewarding verified safety contributions to make roads safer with proportional pool distribution.
                 </Text>
@@ -458,7 +458,7 @@ export const RewardsScreen: React.FC<RewardsScreenProps> = ({ onBack }) => {
               <View style={styles.poolGrid}>
                 <View style={[styles.poolCard, { borderColor: '#86EFAC', backgroundColor: '#F0FDF4' }]}>
                   <View style={styles.poolCardTop}>
-                    <Text style={styles.poolCardIcon}>📊</Text>
+                    <Ionicons name="stats-chart" size={16} color="#15803D" />
                     <Text style={[styles.poolCardSeverity, { color: '#15803D' }]}>LOW</Text>
                   </View>
                   <Text style={styles.poolCardCoins}>50</Text>
@@ -467,7 +467,7 @@ export const RewardsScreen: React.FC<RewardsScreenProps> = ({ onBack }) => {
 
                 <View style={[styles.poolCard, { borderColor: '#FDE047', backgroundColor: '#FEFCE8' }]}>
                   <View style={styles.poolCardTop}>
-                    <Text style={styles.poolCardIcon}>⚠️</Text>
+                    <Ionicons name="warning-outline" size={16} color="#A16207" />
                     <Text style={[styles.poolCardSeverity, { color: '#A16207' }]}>MEDIUM</Text>
                   </View>
                   <Text style={styles.poolCardCoins}>100</Text>
@@ -476,7 +476,7 @@ export const RewardsScreen: React.FC<RewardsScreenProps> = ({ onBack }) => {
 
                 <View style={[styles.poolCard, { borderColor: '#FDBA74', backgroundColor: '#FFF7ED' }]}>
                   <View style={styles.poolCardTop}>
-                    <Text style={styles.poolCardIcon}>🔥</Text>
+                    <Ionicons name="flame-outline" size={16} color="#C2410C" />
                     <Text style={[styles.poolCardSeverity, { color: '#C2410C' }]}>HIGH</Text>
                   </View>
                   <Text style={styles.poolCardCoins}>200</Text>
@@ -485,7 +485,7 @@ export const RewardsScreen: React.FC<RewardsScreenProps> = ({ onBack }) => {
 
                 <View style={[styles.poolCard, { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }]}>
                   <View style={styles.poolCardTop}>
-                    <Text style={styles.poolCardIcon}>🚨</Text>
+                    <Ionicons name="alert-circle-outline" size={16} color="#B91C1C" />
                     <Text style={[styles.poolCardSeverity, { color: '#B91C1C' }]}>CRITICAL</Text>
                   </View>
                   <Text style={styles.poolCardCoins}>300</Text>
@@ -756,11 +756,11 @@ export const RewardsScreen: React.FC<RewardsScreenProps> = ({ onBack }) => {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
               {[
                 { key: 'all', label: 'All Rewards' },
-                { key: 'gear', label: '🪖 Riding Gear' },
-                { key: 'fuel', label: '⛽ Fuel Cashback' },
-                { key: 'toll', label: '🛣️ Toll Passes' },
-                { key: 'maintenance', label: '🔧 Maintenance' },
-                { key: 'voucher', label: '🆘 Roadside Assist' },
+                { key: 'gear', label: 'Riding Gear' },
+                { key: 'fuel', label: 'Fuel Cashback' },
+                { key: 'toll', label: 'Toll Passes' },
+                { key: 'maintenance', label: 'Maintenance' },
+                { key: 'voucher', label: 'Roadside Assist' },
               ].map((cat) => (
                 <TouchableOpacity
                   key={cat.key}
@@ -882,12 +882,12 @@ export const RewardsScreen: React.FC<RewardsScreenProps> = ({ onBack }) => {
                 style={styles.simulateVerifyBtn}
                 onPress={async () => {
                   const earned = await simulateVerifyReport('pool-sim');
-                  Alert.alert('🎉 Coins Credited!', `Report verified! +${earned} Safety Coins credited to your wallet.`);
+                  Alert.alert('Coins Credited!', `Report verified! +${earned} Safety Coins credited to your wallet.`);
                 }}
                 activeOpacity={0.8}
               >
                 <Ionicons name="flash" size={14} color="#FFFFFF" />
-                <Text style={styles.simulateVerifyBtnText}>⚡ Verify Report</Text>
+                <Text style={styles.simulateVerifyBtnText}>Verify Report</Text>
               </TouchableOpacity>
             </View>
 
@@ -898,7 +898,10 @@ export const RewardsScreen: React.FC<RewardsScreenProps> = ({ onBack }) => {
                 <View style={styles.poolDetailHeader}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.poolDetailTitle}>{pool.incidentTitle}</Text>
-                    <Text style={styles.poolDetailLocation}>📍 {pool.locationLabel}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                      <Ionicons name="location-outline" size={12} color="#64748B" />
+                      <Text style={styles.poolDetailLocation}>{pool.locationLabel}</Text>
+                    </View>
                   </View>
                   <View
                     style={[
@@ -916,7 +919,7 @@ export const RewardsScreen: React.FC<RewardsScreenProps> = ({ onBack }) => {
                           : { color: '#B45309' },
                       ]}
                     >
-                      {pool.status === 'verified_distributed' ? '✓ Verified' : '⏳ Pending'}
+                      {pool.status === 'verified_distributed' ? 'Verified' : 'Pending'}
                     </Text>
                   </View>
                 </View>

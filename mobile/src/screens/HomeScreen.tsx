@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,9 +17,9 @@ import { BottomSheet } from '../components/BottomSheet';
 import { NearbyServiceCard } from '../components/NearbyServiceCard';
 import { SlowdownAlert } from '../components/SlowdownAlert';
 import { IncidentAlertCard } from '../components/IncidentAlertCard';
-import { mockNearbyServices, mockIncidents } from '../data/mockData';
+import { mockIncidents } from '../data/mockData';
 import { Incident, NearbyService } from '../types';
-
+import { NearbyServicesService } from '../services/nearbyServicesService';
 import { useApp } from '../context/AppContext';
 
 interface HomeScreenProps {
@@ -51,7 +51,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [showSlowdownAlert, setShowSlowdownAlert] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
 
-  const filteredServices = mockNearbyServices.filter((s) => {
+  // Dynamically generate all nearby services (petrol pumps, CNG, garages, hospitals, police) for user's location
+  const nearbyServices = useMemo(() => {
+    return NearbyServicesService.getNearbyServices(currentLocation);
+  }, [
+    Math.round(currentLocation.latitude * 100),
+    Math.round(currentLocation.longitude * 100),
+  ]);
+
+  const filteredServices = nearbyServices.filter((s) => {
     if (serviceCategory === 'all') return true;
     return s.category === serviceCategory;
   });
@@ -60,13 +68,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     setLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
   };
 
-  const handleSelectIncident = (incident: Incident) => {
+  const handleSelectIncident = React.useCallback((incident: Incident) => {
     setSelectedIncident(incident);
-  };
+  }, []);
 
-  const handleSelectService = (service: NearbyService) => {
-    Alert.alert(service.name, `${service.status ?? ''}\nDistance: ${service.distance}`);
-  };
+  const handleSelectService = React.useCallback((service: NearbyService) => {
+    Alert.alert(service.name, `${service.status ?? ''}\nDistance: ${service.distance}\nAddress: ${service.address ?? ''}`);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -78,7 +86,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         currentHeading={currentHeading}
         recenterTrigger={recenterTrigger}
         incidents={mockIncidents}
-        services={mockNearbyServices}
+        services={nearbyServices}
         layers={layers}
         onSelectIncident={handleSelectIncident}
         onSelectService={handleSelectService}

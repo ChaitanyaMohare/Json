@@ -3,7 +3,7 @@ export interface Coordinates {
   longitude: number;
 }
 
-export type TravelMode = 'car' | 'bike' | 'transit' | 'walk';
+export type TravelMode = 'car' | 'bike' | 'walk';
 
 export type TravelPreference = 'Fastest' | 'Balanced' | 'Safety First';
 
@@ -60,6 +60,10 @@ export interface RouteOption {
   durationSeconds?: number;
   distanceMeters?: number;
   arrivalTime?: string;
+  travelMode?: TravelMode;
+  routeSpecificIncidents?: Incident[];
+  routeSpecificServices?: RouteCorridorService[];
+  routeSpecificRisk?: HistoricalRiskAdvisory;
 }
 
 export interface QuickDestination {
@@ -84,6 +88,9 @@ export interface Incident {
   description?: string;
   supportingReports?: number;
   upvotes?: number;
+  photoUri?: string | null;
+  photos?: GeoTaggedPhoto[];
+  geoTag?: GeoTagMetadata;
 }
 
 export interface NearbyService {
@@ -116,12 +123,19 @@ export interface GeoTagMetadata {
   addressLabel: string;
 }
 
+export interface GeoTaggedPhoto {
+  id: string;
+  uri: string;
+  geoTag: GeoTagMetadata;
+}
+
 export interface Report {
   id: string;
   incidentType: IncidentType;
   title: string;
   description: string;
   photoUri: string | null;
+  photos?: GeoTaggedPhoto[];
   latitude: number;
   longitude: number;
   locationLabel: string;
@@ -130,6 +144,9 @@ export interface Report {
   reliability: ReliabilityConfidence;
   supportingReports: number;
   geoTag?: GeoTagMetadata;
+  reporterRank?: number;
+  isThresholdCapped?: boolean;
+  coinsAwarded?: number;
 }
 
 export interface NavigationInstruction {
@@ -165,7 +182,7 @@ export interface UserProfile {
 }
 
 // ==========================================
-// ROUTEGUARD SAFETY COIN REWARD SYSTEM TYPES
+// WAYSURE SAFETY REWARDS & COIN SYSTEM TYPES
 // ==========================================
 
 export type IncidentSeverityLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -208,7 +225,11 @@ export interface IncidentRewardPool {
   totalPoolCoins: number; // LOW: 50, MED: 100, HIGH: 200, CRITICAL: 300
   totalContributionScore: number;
   riders: RiderDistributionDetail[];
-  status: 'pending_verification' | 'verified_distributed' | 'rejected_spam';
+  status:
+    | 'pending_verification'
+    | 'verified_distributed'
+    | 'rejected_spam'
+    | 'threshold_cap_reached';
   verifiedAt?: string;
 }
 
@@ -327,7 +348,15 @@ export interface LongRouteSafetyState {
   isActive: boolean;
   stationaryDurationMinutes: number;
   lastStationaryLocation?: Coordinates;
-  checkInStatus: 'normal' | 'pending_checkin' | 'emergency_contact_alerted' | 'resolved';
+  isPlannedHalt: boolean;
+  plannedHaltReason?: string;
+  plannedHaltExpiresAt?: number;
+  checkInStage:
+    | 'idle'
+    | 'stage1_inquiry'
+    | 'stage2_second_checkin'
+    | 'stage3_emergency_contact'
+    | 'stage4_assistance';
   checkInCountdownSeconds: number;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
